@@ -1,0 +1,45 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+**/Generated.xcconfig
+**/*.iml
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/flutter_export_environment.sh
+**/Flutter/Flutter.framework
+**/Flutter/Flutter.podspec
+**/Pods/
+**/Runner.xcworkspace/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+
+# Android
+**/*.keystore
+**/local.properties
+
+# VS Code
+.vscode/
+
+# IntelliJ
+.idea/
+
+# Logs
+*.log
+
+test/coverage/
+
+# Generated files
+pubspec.lock
+
+# Optional
+*.apk
+*.ipa
+*.flutter-plugins
+*.flutter-plugins-dependencies
+*.metadata

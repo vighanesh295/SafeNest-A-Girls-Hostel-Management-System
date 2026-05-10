@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Base user profile for all roles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["student", "parent", "admin"] },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Detailed student information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "parentId": { "type": "string" },
+        "roomNo": { "type": "string" },
+        "currentStatus": { "type": "string", "enum": ["IN", "OUT", "LATE"] },
+        "lastExitTime": { "type": "string", "format": "date-time" },
+        "lastEntryTime": { "type": "string", "format": "date-time" },
+        "activePassId": { "type": "string" }
+      },
+      "required": ["uid", "parentId", "roomNo", "currentStatus"]
+    },
+    "Pass": {
+      "title": "Pass",
+      "description": "Outing pass request",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "type": { "type": "string", "enum": ["lunch", "late", "nightout"] },
+        "reason": { "type": "string" },
+        "expectedReturnTime": { "type": "string", "format": "date-time" },
+        "actualReturnTime": { "type": "string", "format": "date-time" },
+        "actualExitTime": { "type": "string", "format": "date-time" },
+        "parentApproval": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "adminApproval": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "active", "completed", "violated"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "type", "reason", "expectedReturnTime", "parentApproval", "adminApproval", "status", "createdAt"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "Hostel issue report",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "issue": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "issue", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/students/{uid}": {
+      "schema": "Student",
+      "description": "Student specific data"
+    },
+    "/passes/{passId}": {
+      "schema": "Pass",
+      "description": "Pass requests"
+    },
+    "/complaints/{complaintId}": {
+      "schema": "Complaint",
+      "description": "Student complaints"
+    }
+  }
+}

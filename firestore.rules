@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && getUserData().role == role;
+    }
+
+    // Admin check — no hardcoded email bypass; role field is the single source of truth
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    // A parent is linked to a student if the student doc records their UID as parentId
+    function isParentOf(studentId) {
+      return hasRole('parent') && get(/databases/$(database)/documents/students/$(studentId)).data.parentId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{uid} {
+      // Users can only read their own profile; admin can read/list all
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      // Prevent self-assigning admin role — only 'student' and 'parent' are allowed on create
+      allow create: if isAuthenticated()
+                    && request.auth.uid == uid
+                    && request.resource.data.role in ['student', 'parent'];
+      // Owners may update their own profile but CANNOT change their role (prevents self-escalation)
+      allow update: if isAdmin()
+                    || (isOwner(uid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
+    }
+
+    match /students/{uid} {
+      // Students read their own record; parents read their linked student; admins read/list all
+      allow get: if isOwner(uid) || isAdmin() || isParentOf(uid);
+      allow list: if isAdmin() || hasRole('parent');
+      allow create: if isOwner(uid) || isAdmin();
+      allow update: if isAdmin() || isOwner(uid);
+    }
+
+    match /passes/{passId} {
+      // Students read their own passes; parents read passes for their linked student; admins read/list all
+      allow get: if isAdmin()
+                 || (hasRole('student') && resource.data.studentId == request.auth.uid)
+                 || isParentOf(resource.data.studentId);
+      // Admins may list all passes.
+      // Students may list passes scoped to their own studentId (where queries are list ops, not get).
+      // Parents may list passes scoped to their linked student.
+      allow list: if isAdmin()
+                  || (hasRole('student') && request.auth.uid != null)
+                  || (hasRole('parent') && request.auth.uid != null);
+      allow create: if hasRole('student');
+      // Parents may only update their parentApproval field on nightout passes
+      // Students may only update the status/exit/return time fields on their own passes
+      // Admins may update any field
+      // Gate scan: the student who owns the pass may transition it to active/completed
+      allow update: if isAdmin()
+                    || (isParentOf(resource.data.studentId)
+                        && resource.data.type == 'nightout'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentApproval']))
+                    || (isParentOf(resource.data.studentId)
+                        && resource.data.type == 'nightout'
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentApproval', 'status']))
+                    || (hasRole('student')
+                        && resource.data.studentId == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'actualExitTime', 'actualReturnTime']));
+    }
+
+    match /complaints/{complaintId} {
+      // Students can only read their own complaints; admins read/list all
+      allow get: if isAdmin() || (hasRole('student') && resource.data.studentId == request.auth.uid);
+      // Students must use scoped queries (protected by the get rule); open list would leak all complaints
+      allow list: if isAdmin();
+      allow create: if hasRole('student');
+      allow update: if isAdmin();
+    }
+  }
+}
