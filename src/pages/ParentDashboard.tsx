@@ -3,11 +3,10 @@ import { collection, query, onSnapshot, doc, getDoc, updateDoc, where, orderBy }
 import { db, auth } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { PassRequest } from '../types';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Card, CardContent } from '../components/ui/card';
 import { toast } from 'sonner';
 import {
-  LogOut,
   Check,
   X,
   Clock,
@@ -18,10 +17,7 @@ import {
   AlertCircle,
   CalendarDays,
   MapPin,
-  Moon,
-  Sunset,
   ArrowLeft,
-  ArrowRight,
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 
@@ -78,7 +74,6 @@ export const ParentDashboard: React.FC = () => {
   const [studentData, setStudentData] = useState<StudentData | null>(null);
   const [studentProfile, setStudentProfile] = useState<UserProfile | null>(null);
   const [passes, setPasses] = useState<PassRequest[]>([]);
-  const [currentTab, setCurrentTab] = useState<Tab>('approvals');
 
   // Refs to hold inner listeners so we can clean them up properly
   const unsubProfileRef = useRef<(() => void) | null>(null);
@@ -190,288 +185,244 @@ export const ParentDashboard: React.FC = () => {
   const historyPasses = passes.filter(p => p.status !== 'pending');
 
   return (
-    <div className="min-h-screen bg-[#FAF8F3]">
+    <div className="min-h-screen bg-[#FAF8F3] flex">
+      <SidebarNav role="parent" />
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-[#8CC6C1] to-[#C49A52] text-white">
-        <div className="px-6 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center overflow-hidden shadow-sm">
-                <img src="/tssm-logo.png" alt="TSSM Logo" className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <p className="text-white/70 text-xs font-medium uppercase tracking-wider mb-0.5">Monitoring</p>
-                <h1 className="text-xl font-bold leading-tight">{studentProfile.name}</h1>
-                <p className="text-white/80 text-sm">Room {studentData.roomNo}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+      <main className="flex-1 p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-[#1A1610] mb-2">Parent Dashboard</h1>
+            <p className="text-[#8B7F6F]">Monitoring {studentProfile.name} • Room {studentData.roomNo}</p>
           </div>
 
-          {/* Status pill + pending badge row */}
-          <div className="flex items-center gap-3">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 rounded-full">
-              <div className={`w-2 h-2 rounded-full ${isIn ? 'bg-green-400' : 'bg-orange-400'}`}></div>
-              <span className="text-sm font-medium">Currently {studentData.currentStatus}</span>
-            </div>
-            {pendingPasses.length > 0 && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/20 rounded-full animate-pulse">
-                <Bell className="w-3.5 h-3.5" />
-                <span className="text-xs font-semibold">{pendingPasses.length} pending</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Content ────────────────────────────────────────────────────────── */}
-      <div className="px-6 py-6 pb-28">
-
-        {/* ── APPROVALS TAB ──────────────────────────────────────────────── */}
-        {currentTab === 'approvals' && (
-          <>
-            <h2 className="text-lg font-bold text-[#1A1610] mb-4">
-              Pending Approvals
-              {pendingPasses.length > 0 && (
-                <span className="ml-2 text-sm font-semibold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
-                  {pendingPasses.length}
-                </span>
-              )}
-            </h2>
-
-            {pendingPasses.length > 0 ? (
-              <div className="space-y-4">
-                {pendingPasses.map((pass) => (
-                  <div key={pass.id} className="bg-white rounded-3xl p-6 shadow-lg border border-[#E5E0D5]">
-                    {/* Pass type icon strip */}
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className={`w-10 h-10 bg-gradient-to-br ${passGradient(pass.type)} rounded-xl flex items-center justify-center text-white`}>
-                        <PassTypeIcon type={pass.type} />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-[#1A1610] capitalize">{pass.type} Pass</h3>
-                        <p className="text-[#8B7F6F] text-xs">{new Date(pass.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                      </div>
-                      <Badge className="bg-orange-100 text-orange-800 border border-orange-200 text-xs">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Pending
-                      </Badge>
-                    </div>
-
-                    {/* Details */}
-                    {pass.reason && (
-                      <div className="flex items-start gap-2 mb-3">
-                        <MapPin className="w-3.5 h-3.5 text-[#8B7F6F] mt-0.5 flex-shrink-0" />
-                        <p className="text-[#8B7F6F] text-sm">{pass.reason}</p>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 mb-4">
-                      <CalendarDays className="w-3.5 h-3.5 text-[#8B7F6F]" />
-                      <p className="text-[#8B7F6F] text-xs">
-                        Return by: {new Date(pass.expectedReturnTime).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-
-                    {/* Admin status note */}
-                    {pass.adminApproval !== 'approved' && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-4">
-                        <p className="text-xs text-amber-700">
-                          ⏳ Admin approval also pending — your consent will be recorded and applied once admin approves.
-                        </p>
-                      </div>
-                    )}
-                    {pass.adminApproval === 'approved' && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mb-4">
-                        <p className="text-xs text-emerald-700">
-                          ✅ Admin has approved — your approval will activate the pass immediately.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Action buttons */}
-                    <div className="flex gap-3">
-                      <Button
-                        onClick={() => handleApprovePass(pass.id, true)}
-                        className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-2xl h-11"
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={() => handleApprovePass(pass.id, false)}
-                        variant="destructive"
-                        className="flex-1 rounded-2xl h-11"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Reject
-                      </Button>
-                    </div>
+          {/* Status Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <Card className="bg-white border border-[#E5E0D5]">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full ${isIn ? 'bg-green-400' : 'bg-orange-400'}`}></div>
+                  <div>
+                    <p className="text-sm text-[#8B7F6F]">Current Status</p>
+                    <p className="font-semibold text-[#1A1610]">{studentData.currentStatus}</p>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 bg-[#F4F2ED] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="w-10 h-10 text-[#C49A52]" />
                 </div>
-                <h3 className="font-semibold text-[#1A1610] mb-2">All Caught Up!</h3>
-                <p className="text-[#8B7F6F] text-sm">No pending approvals at the moment</p>
-                {passes.length > 0 && (
-                  <button
-                    onClick={() => setCurrentTab('history')}
-                    className="mt-4 inline-flex items-center gap-1 text-[#C49A52] text-sm font-medium"
-                  >
-                    View pass history <ArrowRight className="w-4 h-4" />
-                  </button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border border-[#E5E0D5]">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Bell className="w-5 h-5 text-orange-500" />
+                  <div>
+                    <p className="text-sm text-[#8B7F6F]">Pending Approvals</p>
+                    <p className="font-semibold text-[#1A1610]">{pendingPasses.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white border border-[#E5E0D5]">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <History className="w-5 h-5 text-[#C49A52]" />
+                  <div>
+                    <p className="text-sm text-[#8B7F6F]">Total Passes</p>
+                    <p className="font-semibold text-[#1A1610]">{passes.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tabs */}
+          <Tabs defaultValue="approvals" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-white border border-[#E5E0D5]">
+              <TabsTrigger value="approvals" className="flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                Approvals
+                {pendingPasses.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 bg-orange-100 text-orange-700">
+                    {pendingPasses.length}
+                  </Badge>
                 )}
-              </div>
-            )}
-          </>
-        )}
+              </TabsTrigger>
+              <TabsTrigger value="history" className="flex items-center gap-2">
+                <History className="w-4 h-4" />
+                History
+              </TabsTrigger>
+            </TabsList>
 
-        {/* ── HISTORY TAB ────────────────────────────────────────────────── */}
-        {currentTab === 'history' && (
-          <>
-            <h2 className="text-lg font-bold text-[#1A1610] mb-1">Pass History</h2>
-            <p className="text-[#8B7F6F] text-sm mb-5">All passes for {studentProfile.name}</p>
-
-            {historyPasses.length > 0 ? (
-              <div className="space-y-3">
-                {historyPasses.map((pass) => {
-                  const sc = statusConfig(pass.status);
-                  return (
-                    <div key={pass.id} className="bg-white rounded-2xl p-4 shadow-sm border border-[#E5E0D5]">
-                      {/* Top row */}
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className={`w-9 h-9 bg-gradient-to-br ${passGradient(pass.type)} rounded-xl flex items-center justify-center text-white flex-shrink-0`}>
-                          <PassTypeIcon type={pass.type} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold text-[#1A1610] capitalize text-sm">{pass.type} Pass</h3>
-                            <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${sc.color}`}>
-                              {sc.icon}
-                              {sc.label}
-                            </span>
+            <TabsContent value="approvals" className="mt-6">
+              {pendingPasses.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingPasses.map((pass) => (
+                    <Card key={pass.id} className="bg-white border border-[#E5E0D5]">
+                      <CardContent className="p-6">
+                        {/* Pass type icon strip */}
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className={`w-10 h-10 bg-gradient-to-br ${passGradient(pass.type)} rounded-xl flex items-center justify-center text-white`}>
+                            <PassTypeIcon type={pass.type} />
                           </div>
-                          <p className="text-[#8B7F6F] text-xs mt-0.5">
-                            {new Date(pass.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </p>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-[#1A1610] capitalize">{pass.type} Pass</h3>
+                            <p className="text-[#8B7F6F] text-xs">{new Date(pass.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                          <Badge className="bg-orange-100 text-orange-800 border border-orange-200 text-xs">
+                            <Clock className="w-3 h-3 mr-1" />
+                            Pending
+                          </Badge>
                         </div>
-                      </div>
 
-                      {/* Details grid */}
-                      <div className="space-y-1.5 pl-12">
+                        {/* Details */}
                         {pass.reason && (
-                          <div className="flex items-start gap-1.5">
-                            <MapPin className="w-3 h-3 text-[#8B7F6F] mt-0.5 flex-shrink-0" />
-                            <p className="text-xs text-[#8B7F6F]">{pass.reason}</p>
+                          <div className="flex items-start gap-2 mb-3">
+                            <MapPin className="w-3.5 h-3.5 text-[#8B7F6F] mt-0.5 flex-shrink-0" />
+                            <p className="text-[#8B7F6F] text-sm">{pass.reason}</p>
                           </div>
                         )}
-                        <div className="flex items-center gap-1.5">
-                          <CalendarDays className="w-3 h-3 text-[#8B7F6F]" />
-                          <p className="text-xs text-[#8B7F6F]">
-                            Return by {new Date(pass.expectedReturnTime).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        <div className="flex items-center gap-2 mb-4">
+                          <CalendarDays className="w-3.5 h-3.5 text-[#8B7F6F]" />
+                          <p className="text-[#8B7F6F] text-xs">
+                            Return by: {new Date(pass.expectedReturnTime).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
-                        {pass.actualReturnTime && (
-                          <div className="flex items-center gap-1.5">
-                            <ArrowLeft className="w-3 h-3 text-[#8B7F6F]" />
-                            <p className="text-xs text-[#8B7F6F]">
-                              Returned: {new Date(pass.actualReturnTime).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+
+                        {/* Admin status note */}
+                        {pass.adminApproval !== 'approved' && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-4">
+                            <p className="text-xs text-amber-700">
+                              ⏳ Admin approval also pending — your consent will be recorded and applied once admin approves.
+                            </p>
+                          </div>
+                        )}
+                        {pass.adminApproval === 'approved' && (
+                          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mb-4">
+                            <p className="text-xs text-emerald-700">
+                              ✅ Admin has approved — your approval will activate the pass immediately.
                             </p>
                           </div>
                         )}
 
-                        {/* Approval pills */}
-                        <div className="flex items-center gap-2 pt-1">
-                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
-                            pass.adminApproval === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            pass.adminApproval === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                            'bg-orange-50 text-orange-700 border-orange-200'
-                          }`}>
-                            Admin: {pass.adminApproval}
-                          </span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
-                            pass.parentApproval === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                            pass.parentApproval === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                            'bg-orange-50 text-orange-700 border-orange-200'
-                          }`}>
-                            Parent: {pass.parentApproval}
-                          </span>
+                        {/* Action buttons */}
+                        <div className="flex gap-3">
+                          <Button
+                            onClick={() => handleApprovePass(pass.id, true)}
+                            className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-2xl h-11"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={() => handleApprovePass(pass.id, false)}
+                            variant="destructive"
+                            className="flex-1 rounded-2xl h-11"
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Reject
+                          </Button>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 bg-[#F4F2ED] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <History className="w-10 h-10 text-[#8B7F6F]" />
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-                <h3 className="font-semibold text-[#1A1610] mb-2">No History Yet</h3>
-                <p className="text-[#8B7F6F] text-sm">Completed passes will appear here</p>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+              ) : (
+                <Card className="bg-white border border-[#E5E0D5]">
+                  <CardContent className="p-12 text-center">
+                    <CheckCircle2 className="w-16 h-16 text-[#C49A52] mx-auto mb-4" />
+                    <h3 className="font-semibold text-[#1A1610] mb-2">All Caught Up!</h3>
+                    <p className="text-[#8B7F6F] text-sm">No pending approvals at the moment</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-      {/* ── Bottom Navigation ───────────────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#F4F2ED] border-t border-[#E5E0D5] px-6 py-4">
-        <div className="flex justify-around">
-          <NavBtn
-            icon={<Bell className="w-6 h-6" />}
-            label="Approvals"
-            active={currentTab === 'approvals'}
-            badge={pendingPasses.length}
-            onClick={() => setCurrentTab('approvals')}
-          />
-          <NavBtn
-            icon={<History className="w-6 h-6" />}
-            label="History"
-            active={currentTab === 'history'}
-            onClick={() => setCurrentTab('history')}
-          />
+            <TabsContent value="history" className="mt-6">
+              {historyPasses.length > 0 ? (
+                <div className="space-y-4">
+                  {historyPasses.map((pass) => {
+                    const sc = statusConfig(pass.status);
+                    return (
+                      <Card key={pass.id} className="bg-white border border-[#E5E0D5]">
+                        <CardContent className="p-4">
+                          {/* Top row */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className={`w-9 h-9 bg-gradient-to-br ${passGradient(pass.type)} rounded-xl flex items-center justify-center text-white flex-shrink-0`}>
+                              <PassTypeIcon type={pass.type} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-bold text-[#1A1610] capitalize text-sm">{pass.type} Pass</h3>
+                                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium ${sc.color}`}>
+                                  {sc.icon}
+                                  {sc.label}
+                                </span>
+                              </div>
+                              <p className="text-[#8B7F6F] text-xs mt-0.5">
+                                {new Date(pass.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Details grid */}
+                          <div className="space-y-1.5 pl-12">
+                            {pass.reason && (
+                              <div className="flex items-start gap-1.5">
+                                <MapPin className="w-3 h-3 text-[#8B7F6F] mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-[#8B7F6F]">{pass.reason}</p>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                              <CalendarDays className="w-3 h-3 text-[#8B7F6F]" />
+                              <p className="text-xs text-[#8B7F6F]">
+                                Return by {new Date(pass.expectedReturnTime).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                            {pass.actualReturnTime && (
+                              <div className="flex items-center gap-1.5">
+                                <ArrowLeft className="w-3 h-3 text-[#8B7F6F]" />
+                                <p className="text-xs text-[#8B7F6F]">
+                                  Returned: {new Date(pass.actualReturnTime).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Approval pills */}
+                            <div className="flex items-center gap-2 pt-1">
+                              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                                pass.adminApproval === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                pass.adminApproval === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                                'bg-orange-50 text-orange-700 border-orange-200'
+                              }`}>
+                                Admin: {pass.adminApproval}
+                              </span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
+                                pass.parentApproval === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                pass.parentApproval === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                                'bg-orange-50 text-orange-700 border-orange-200'
+                              }`}>
+                                Parent: {pass.parentApproval}
+                              </span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Card className="bg-white border border-[#E5E0D5]">
+                  <CardContent className="p-12 text-center">
+                    <History className="w-16 h-16 text-[#8B7F6F] mx-auto mb-4" />
+                    <h3 className="font-semibold text-[#1A1610] mb-2">No History Yet</h3>
+                    <p className="text-[#8B7F6F] text-sm">Completed passes will appear here</p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
-
-// ─── NavBtn helper ─────────────────────────────────────────────────────────────
-function NavBtn({
-  icon,
-  label,
-  active,
-  badge,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  badge?: number;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center p-2 rounded-xl transition-colors relative ${active ? 'bg-[#C49A52]/10' : ''}`}
-    >
-      <span className={active ? 'text-[#C49A52]' : 'text-[#8B7F6F]'}>{icon}</span>
-      <span className={`text-xs font-medium mt-1 ${active ? 'text-[#C49A52]' : 'text-[#8B7F6F]'}`}>{label}</span>
-      {badge != null && badge > 0 && (
-        <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}

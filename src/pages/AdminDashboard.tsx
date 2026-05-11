@@ -10,10 +10,10 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { SidebarNav } from '../components/SidebarNav';
 import { toast } from 'sonner';
 import {
   LogOut,
-  LayoutDashboard,
   Pencil,
   Check,
   X,
@@ -40,6 +40,7 @@ export const AdminDashboard: React.FC = () => {
   const [students, setStudents] = useState<(StudentData & { name: string })[]>([]);
   const [passes, setPasses] = useState<PassRequest[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [currentTab, setCurrentTab] = useState('status');
   // Use a ref for the users map so it's always current inside callbacks (avoids stale closure)
   const usersMapRef = useRef<Map<string, UserProfile>>(new Map());
   const [renderTick, forceRender] = useState(0);
@@ -155,253 +156,222 @@ export const AdminDashboard: React.FC = () => {
     { name: 'LATE', value: studentsWithNames.filter(s => s.currentStatus === 'LATE').length },
   ];
 
+  const handleLogout = () => signOut(auth);
+  const handleThemeToggle = () => setTheme(actualTheme === 'light' ? 'dark' : 'light');
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Optimized Header */}
-      <header className="sticky top-0 z-10 border-b bg-card border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          {/* Logo & Branding */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="p-2.5 rounded-xl shadow-md flex-shrink-0 bg-white">
-              <img src="/tssm-logo.png" alt="TSSM Logo" className="h-8 w-8 sm:h-9 sm:w-9 object-cover rounded-lg" />
+    <div className="min-h-screen flex bg-background">
+      <SidebarNav
+        role="admin"
+        currentTab={currentTab}
+        onTabChange={setCurrentTab}
+        onLogout={handleLogout}
+        onThemeToggle={handleThemeToggle}
+        theme={actualTheme}
+        stats={{
+          pendingPasses: passes.filter(p => p.status === 'pending').length,
+          openComplaints: complaints.filter(c => c.status === 'pending').length
+        }}
+        profile={profile}
+      />
+
+      <main className="flex-1 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="sticky top-0 z-10 border-b bg-card border-border px-6 py-4">
+          <div className="flex items-center justify-end gap-3">
+            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white/10 border border-border flex items-center justify-center">
+              <img src="/tssm-logo.png" alt="Admin Logo" className="w-8 h-8 object-contain" />
             </div>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold whitespace-nowrap text-foreground">SafeNest Admin</h1>
-              <p className="text-xs sm:text-sm hidden sm:block text-muted-foreground">Hostel Management</p>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-foreground">Admin Dashboard</p>
             </div>
           </div>
+        </header>
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(actualTheme === 'light' ? 'dark' : 'light')}
-              className="hover:bg-gray-100 rounded-lg"
-            >
-              {actualTheme === 'light' ? <Moon className="h-4 w-4 sm:h-5 sm:w-5" /> : <Sun className="h-4 w-4 sm:h-5 sm:w-5" />}
-            </Button>
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-foreground">{profile?.name}</p>
-              <p className="text-xs text-muted-foreground">Administrator</p>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => signOut(auth)} 
-              className="hover:bg-red-50 hover:text-destructive rounded-lg"
-            >
-              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
-        {/* Enhanced Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          <Card className="shadow-md border hover:shadow-lg transition-all duration-300 bg-card border-border">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs sm:text-sm font-semibold text-foreground">Total Students</CardTitle>
-                <Users className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#C49A52' }} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl sm:text-3xl font-bold text-foreground">{studentsWithNames.length}</p>
-              <p className="text-xs mt-2 flex items-center gap-1" style={{ color: '#C49A52' }}>
-                <TrendingUp className="h-3 w-3" />
-                Active residents
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-md border hover:shadow-lg transition-all duration-300" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E0D5' }}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs sm:text-sm font-semibold text-foreground">Present</CardTitle>
-                <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#8CC6C1' }} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                {studentsWithNames.filter(s => s.currentStatus === 'IN').length}
-              </p>
-              <p className="text-xs mt-2" style={{ color: '#8CC6C1' }}>In hostel</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-md border hover:shadow-lg transition-all duration-300" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E0D5' }}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs sm:text-sm font-semibold text-foreground">Out</CardTitle>
-                <UserX className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#F2C66B' }} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                {studentsWithNames.filter(s => s.currentStatus === 'OUT').length}
-              </p>
-              <p className="text-xs mt-2" style={{ color: '#F2C66B' }}>Outside campus</p>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-md border hover:shadow-lg transition-all duration-300" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E0D5' }}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xs sm:text-sm font-semibold text-foreground">Late</CardTitle>
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#EE6B5B' }} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl sm:text-3xl font-bold text-foreground">
-                {studentsWithNames.filter(s => s.currentStatus === 'LATE').length}
-              </p>
-              <p className="text-xs mt-2" style={{ color: '#EE6B5B' }}>Overdue returns</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Occupancy Chart */}
-        <Card className="shadow-md border bg-card border-border">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#C49A52' }} />
-              <CardTitle className="text-base sm:text-lg text-foreground">Hostel Occupancy Overview</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="h-28 sm:h-32">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" width={60} tick={{ fontSize: 12 }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #E5E0D5',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                    }}
-                  />
-                  <Bar dataKey="value" fill="#C49A52" radius={[0, 6, 6, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Tabs defaultValue="status" className="w-full">
-          <TabsList className="grid !w-full grid-cols-2 sm:grid-cols-4 border p-1 h-auto sm:h-14 rounded-2xl shadow-sm gap-1 sm:gap-0 bg-muted border-border">
-            <TabsTrigger value="status" className="flex items-center justify-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all data-[state=active]:text-white text-muted-foreground py-2 sm:py-3">
-              <Home className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Live Status</span>
-              <span className="sm:hidden">Status</span>
-            </TabsTrigger>
-            <TabsTrigger value="passes" className="flex items-center justify-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all data-[state=active]:text-white text-muted-foreground py-2 sm:py-3">
-              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Pass Requests</span>
-              <span className="sm:hidden">Passes</span>
-            </TabsTrigger>
-            <TabsTrigger value="complaints" className="flex items-center justify-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all data-[state=active]:text-white text-muted-foreground py-2 sm:py-3">
-              <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Complaints</span>
-              <span className="sm:hidden">Issues</span>
-            </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center justify-center gap-1 sm:gap-2 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold transition-all data-[state=active]:text-white text-muted-foreground py-2 sm:py-3">
-              <History className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">History</span>
-              <span className="sm:hidden">Logs</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="status" className="pt-4 sm:pt-6">
-            <Card className="w-full shadow-md border bg-card border-border">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 sm:h-5 sm:w-5" style={{ color: '#C49A52' }} />
-                  <CardTitle className="text-base sm:text-lg text-foreground">Student Status Overview</CardTitle>
+        <div className="flex-1 p-6 space-y-6">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="shadow-sm border hover:shadow-md transition-all duration-300 bg-card border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-foreground">Total Students</CardTitle>
+                  <Users className="h-5 w-5" style={{ color: '#C49A52' }} />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto -mx-6 sm:mx-0">
-                <Table className="text-xs sm:text-sm">
-                  <TableHeader>
-                    <TableRow style={{ borderColor: '#E5E0D5', backgroundColor: '#F4F2ED' }}>
-                      <TableHead className="font-semibold text-xs sm:text-sm" style={{ color: '#1A1610' }}>Name</TableHead>
-                      <TableHead className="font-semibold text-xs sm:text-sm" style={{ color: '#1A1610' }}>Room</TableHead>
-                      <TableHead className="font-semibold text-xs sm:text-sm" style={{ color: '#1A1610' }}>Status</TableHead>
-                      <TableHead className="font-semibold text-xs sm:text-sm" style={{ color: '#1A1610' }}>Last Exit</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {studentsWithNames.map(student => (
-                      <TableRow key={student.uid} style={{ borderColor: '#E5E0D5' }} className="hover:bg-gray-50 transition-colors text-xs sm:text-sm">
-                        <TableCell className="font-medium text-xs sm:text-sm" style={{ color: '#1A1610' }}>{student.name}</TableCell>
-                        <TableCell className="text-xs sm:text-sm">
-                        {editingRoom?.uid === student.uid ? (
-                          <div className="flex items-center gap-1">
-                            <Input
-                              className="h-6 sm:h-7 w-20 sm:w-24 text-xs px-2"
-                              value={editingRoom.draft}
-                              onChange={e => setEditingRoom({ uid: student.uid, draft: e.target.value })}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') handleSaveRoomNo(student.uid, editingRoom.draft);
-                                if (e.key === 'Escape') setEditingRoom(null);
-                              }}
-                              autoFocus
-                            />
-                            <Button size="icon" className="h-6 w-6 sm:h-7 sm:w-7" onClick={() => handleSaveRoomNo(student.uid, editingRoom.draft)}>
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-6 w-6 sm:h-7 sm:w-7" onClick={() => setEditingRoom(null)}>
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 group">
-                            <span>{student.roomNo}</span>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-5 w-5 sm:h-6 sm:w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => setEditingRoom({ uid: student.uid, draft: student.roomNo })}
-                              title="Edit room number"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          student.currentStatus === 'IN' ? 'default' :
-                          student.currentStatus === 'OUT' ? 'secondary' :
-                          'destructive'
-                        } className="font-medium">
-                          <div className={`w-2 h-2 rounded-full mr-2 ${
-                            student.currentStatus === 'IN' ? 'bg-green-500' :
-                            student.currentStatus === 'OUT' ? 'bg-blue-500' :
-                            'bg-red-500'
-                          }`}></div>
-                          {student.currentStatus}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs sm:text-sm" style={{ color: '#8B7F6F' }}>
-                        {student.lastExitTime ? new Date(student.lastExitTime).toLocaleString() : 'N/A'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                <p className="text-3xl font-bold text-foreground">{studentsWithNames.length}</p>
+                <p className="text-xs mt-2 flex items-center gap-1" style={{ color: '#C49A52' }}>
+                  <TrendingUp className="h-3 w-3" />
+                  Active residents
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border hover:shadow-md transition-all duration-300 bg-card border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-foreground">Present</CardTitle>
+                  <UserCheck className="h-5 w-5" style={{ color: '#8CC6C1' }} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-foreground">
+                  {studentsWithNames.filter(s => s.currentStatus === 'IN').length}
+                </p>
+                <p className="text-xs mt-2" style={{ color: '#8CC6C1' }}>In hostel</p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border hover:shadow-md transition-all duration-300 bg-card border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-foreground">Out</CardTitle>
+                  <UserX className="h-5 w-5" style={{ color: '#F2C66B' }} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-foreground">
+                  {studentsWithNames.filter(s => s.currentStatus === 'OUT').length}
+                </p>
+                <p className="text-xs mt-2" style={{ color: '#F2C66B' }}>Outside campus</p>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border hover:shadow-md transition-all duration-300 bg-card border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold text-foreground">Late</CardTitle>
+                  <Clock className="h-5 w-5" style={{ color: '#EE6B5B' }} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-foreground">
+                  {studentsWithNames.filter(s => s.currentStatus === 'LATE').length}
+                </p>
+                <p className="text-xs mt-2" style={{ color: '#EE6B5B' }}>Overdue returns</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Occupancy Chart */}
+          <Card className="shadow-sm border bg-card border-border">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5" style={{ color: '#C49A52' }} />
+                <CardTitle className="text-lg text-foreground">Hostel Occupancy Overview</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" width={60} tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E0D5',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                      }}
+                      labelStyle={{ color: '#0F172A' }}
+                      itemStyle={{ color: '#0F172A' }}
+                      formatter={(value) => [`${value}`, 'Student']}
+                    />
+                    <Bar dataKey="value" fill="#C49A52" radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tab Content */}
+          {currentTab === 'status' && (
+            <Card className="shadow-sm border bg-card border-border">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" style={{ color: '#C49A52' }} />
+                  <CardTitle className="text-lg text-foreground">Student Status Overview</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ borderColor: '#E5E0D5', backgroundColor: '#F4F2ED' }}>
+                        <TableHead className="font-semibold" style={{ color: '#1A1610' }}>Name</TableHead>
+                        <TableHead className="font-semibold" style={{ color: '#1A1610' }}>Room</TableHead>
+                        <TableHead className="font-semibold" style={{ color: '#1A1610' }}>Status</TableHead>
+                        <TableHead className="font-semibold" style={{ color: '#1A1610' }}>Last Exit</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {studentsWithNames.map(student => (
+                        <TableRow key={student.uid} style={{ borderColor: '#E5E0D5' }} className="hover:bg-muted/50 transition-colors">
+                          <TableCell className="font-medium" style={{ color: '#1A1610' }}>{student.name}</TableCell>
+                          <TableCell>
+                            {editingRoom?.uid === student.uid ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  className="h-8 w-24 text-sm"
+                                  value={editingRoom.draft}
+                                  onChange={e => setEditingRoom({ uid: student.uid, draft: e.target.value })}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSaveRoomNo(student.uid, editingRoom.draft);
+                                    if (e.key === 'Escape') setEditingRoom(null);
+                                  }}
+                                  autoFocus
+                                />
+                                <Button size="sm" onClick={() => handleSaveRoomNo(student.uid, editingRoom.draft)}>
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingRoom(null)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2 group">
+                                <span>{student.roomNo}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => setEditingRoom({ uid: student.uid, draft: student.roomNo })}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              student.currentStatus === 'IN' ? 'default' :
+                              student.currentStatus === 'OUT' ? 'secondary' :
+                              'destructive'
+                            } className="font-medium">
+                              <div className={`w-2 h-2 rounded-full mr-2 ${
+                                student.currentStatus === 'IN' ? 'bg-green-500' :
+                                student.currentStatus === 'OUT' ? 'bg-blue-500' :
+                                'bg-red-500'
+                              }`}></div>
+                              {student.currentStatus}
+                            </Badge>
+                          </TableCell>
+                          <TableCell style={{ color: '#8B7F6F' }}>
+                            {student.lastExitTime ? new Date(student.lastExitTime).toLocaleString() : 'N/A'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+          )}
 
-          <TabsContent value="passes" className="pt-6">
+          {currentTab === 'passes' && (
             <div className="space-y-6">
-              {/* Passes awaiting admin action */}
+              {/* Pending Admin Action */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5" style={{ color: '#C49A52' }} />
@@ -411,7 +381,7 @@ export const AdminDashboard: React.FC = () => {
                   </Badge>
                 </div>
                 {passes.filter(p => p.status === 'pending' && p.adminApproval === 'pending').map(pass => (
-                  <Card key={pass.id} className="shadow-xl hover:shadow-2xl transition-all duration-300" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E0D5' }}>
+                  <Card key={pass.id} className="shadow-sm border hover:shadow-md transition-all duration-300 bg-card border-border">
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start">
                         <div className="space-y-2">
@@ -454,7 +424,7 @@ export const AdminDashboard: React.FC = () => {
                   </Card>
                 ))}
                 {passes.filter(p => p.status === 'pending' && p.adminApproval === 'pending').length === 0 && (
-                  <Card style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E0D5' }}>
+                  <Card className="bg-card border-border">
                     <CardContent className="p-8 text-center">
                       <CheckCircle className="h-12 w-12 mx-auto mb-4" style={{ color: '#5FD4B7' }} />
                       <p className="font-medium" style={{ color: '#1A1610' }}>All caught up!</p>
@@ -464,46 +434,39 @@ export const AdminDashboard: React.FC = () => {
                 )}
               </div>
 
-              {/* All passes: admin approved — waiting for parent */}
+              {/* Waiting for Parent Approval */}
               {passes.filter(p => p.status === 'pending' && p.adminApproval === 'approved').length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
-                    <UserCheck className="h-5 w-5 text-blue-600" />
-                    <h3 className="font-semibold text-lg text-blue-800">Awaiting Parent Consent</h3>
+                    <Clock className="h-5 w-5" style={{ color: '#F2C66B' }} />
+                    <h3 className="font-semibold text-lg" style={{ color: '#1A1610' }}>Waiting for Parent Approval</h3>
                     <Badge variant="outline" className="ml-auto">
-                      {passes.filter(p => p.status === 'pending' && p.adminApproval === 'approved').length} pending
+                      {passes.filter(p => p.status === 'pending' && p.adminApproval === 'approved').length} requests
                     </Badge>
                   </div>
                   {passes.filter(p => p.status === 'pending' && p.adminApproval === 'approved').map(pass => (
-                    <Card key={pass.id} className="bg-white border border-slate-200 shadow-xl hover:shadow-2xl transition-all duration-300">
+                    <Card key={pass.id} className="shadow-sm border bg-card border-border">
                       <CardContent className="p-6">
                         <div className="flex justify-between items-start">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <p className="font-bold text-lg text-slate-900">{pass.studentName}</p>
-                              <Badge variant="outline" className="capitalize border-blue-300 text-blue-700 bg-blue-50">
+                              <p className="font-bold text-lg" style={{ color: '#1A1610' }}>{pass.studentName}</p>
+                              <Badge variant="outline" className="capitalize" style={{ borderColor: '#F2C66B', color: '#B8860B', backgroundColor: '#FFFBF0' }}>
                                 {pass.type}
                               </Badge>
-                              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                                Admin ✓ — Awaiting parent
-                              </Badge>
                             </div>
-                            <p className="text-slate-600">{pass.reason}</p>
-                            <div className="flex items-center gap-4 text-sm text-slate-600">
+                            <p style={{ color: '#8B7F6F' }}>{pass.reason}</p>
+                            <div className="flex items-center gap-4 text-sm" style={{ color: '#8B7F6F' }}>
+                              <span className="flex items-center gap-1">
+                                <CheckCircle className="h-4 w-4" />
+                                Admin approved
+                              </span>
                               <span className="flex items-center gap-1">
                                 <Clock className="h-4 w-4" />
                                 Expected: {new Date(pass.expectedReturnTime).toLocaleString()}
                               </span>
                             </div>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleRejectPass(pass.id)}
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            Revoke
-                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -511,30 +474,30 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="complaints" className="pt-6">
-            <div className="space-y-4">
+          {currentTab === 'complaints' && (
+            <div className="space-y-6">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                <h3 className="font-semibold text-lg text-red-800">Pending Complaints</h3>
+                <AlertTriangle className="h-5 w-5" style={{ color: '#EE6B5B' }} />
+                <h3 className="font-semibold text-lg" style={{ color: '#1A1610' }}>Open Complaints</h3>
                 <Badge variant="outline" className="ml-auto">
-                  {complaints.filter(c => c.status === 'pending').length} active
+                  {complaints.filter(c => c.status === 'pending').length} pending
                 </Badge>
               </div>
               {complaints.filter(c => c.status === 'pending').map(complaint => (
-                <Card key={complaint.id} className="bg-white border border-slate-200 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <Card key={complaint.id} className="shadow-sm border bg-card border-border">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start">
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-lg text-slate-900">{complaint.studentName}</p>
-                          <Badge variant="outline" className="capitalize border-rose-300 text-rose-700 bg-rose-50">
+                          <p className="font-bold text-lg" style={{ color: '#1A1610' }}>{complaint.studentName}</p>
+                          <Badge variant="outline" className="capitalize" style={{ borderColor: '#EE6B5B', color: '#B91C1C', backgroundColor: '#FEF2F2' }}>
                             {complaint.category}
                           </Badge>
                         </div>
-                        <p className="text-slate-600">{complaint.issue}</p>
-                        <div className="flex items-center gap-4 text-sm text-slate-600">
+                        <p style={{ color: '#8B7F6F' }}>{complaint.description}</p>
+                        <div className="flex items-center gap-4 text-sm" style={{ color: '#8B7F6F' }}>
                           <span className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
                             {new Date(complaint.createdAt).toLocaleString()}
@@ -543,118 +506,90 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                       <Button
                         size="sm"
-                        variant="outline"
                         onClick={() => handleResolveComplaint(complaint.id)}
-                        className="border-green-300 text-green-700 hover:bg-green-50"
+                        className="text-white"
+                        style={{ backgroundColor: '#5FD4B7' }}
                       >
                         <CheckCircle className="h-4 w-4 mr-1" />
-                        Mark Resolved
+                        Resolve
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               ))}
               {complaints.filter(c => c.status === 'pending').length === 0 && (
-                <Card className="bg-green-50 border-green-200">
+                <Card className="bg-card border-border">
                   <CardContent className="p-8 text-center">
-                    <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                    <p className="text-green-800 font-medium">All complaints resolved!</p>
-                    <p className="text-green-600 text-sm">No pending complaints to address.</p>
+                    <CheckCircle className="h-12 w-12 mx-auto mb-4" style={{ color: '#5FD4B7' }} />
+                    <p className="font-medium" style={{ color: '#1A1610' }}>No open complaints!</p>
+                    <p className="text-sm" style={{ color: '#8B7F6F' }}>All issues have been resolved.</p>
                   </CardContent>
                 </Card>
               )}
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="history" className="pt-6">
-            <div className="space-y-8">
-              <div className="space-y-4">
+          {currentTab === 'history' && (
+            <Card className="shadow-sm border bg-card border-border">
+              <CardHeader>
                 <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                  <h3 className="font-semibold text-lg text-blue-800">Pass History</h3>
-                  <Badge variant="outline" className="ml-auto">
-                    {passes.filter(p => p.status !== 'pending').length} total
-                  </Badge>
+                  <History className="h-5 w-5" style={{ color: '#C49A52' }} />
+                  <CardTitle className="text-lg text-foreground">Activity History</CardTitle>
                 </div>
-                <div className="grid gap-4">
-                  {passes.filter(p => p.status !== 'pending').map(pass => (
-                    <Card key={pass.id} className="hover:shadow-md transition-all duration-300">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-bold">{pass.studentName}</p>
-                              <Badge variant="outline" className="capitalize">{pass.type}</Badge>
+              </CardHeader>
+              <CardContent>
+                {passes.length || complaints.length ? (
+                  <div className="space-y-6">
+                    {passes.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground mb-3">Recent Pass Activity</h3>
+                        <div className="space-y-3">
+                          {passes.slice(0, 5).map(pass => (
+                            <div key={pass.id} className="rounded-2xl border border-border p-4 bg-surface">
+                              <div className="flex items-center justify-between gap-3 mb-2">
+                                <p className="font-semibold text-foreground">{pass.studentName}</p>
+                                <Badge variant="outline" className="text-xs uppercase">
+                                  {pass.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{pass.type} pass • {pass.reason || 'No reason provided'}</p>
+                              <p className="text-xs text-muted-foreground mt-2">{new Date(pass.createdAt).toLocaleString()}</p>
                             </div>
-                            <p className="text-sm text-slate-600">{new Date(pass.createdAt).toLocaleString()}</p>
-                          </div>
-                          <Badge variant={
-                            pass.status === 'completed' ? 'default' :
-                            pass.status === 'violated' ? 'destructive' :
-                            pass.status === 'rejected' ? 'destructive' :
-                            'secondary'
-                          } className="capitalize">
-                            {pass.status}
-                          </Badge>
+                          ))}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {passes.filter(p => p.status !== 'pending').length === 0 && (
-                    <Card className="bg-muted/50">
-                      <CardContent className="p-8 text-center">
-                        <History className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                        <p className="text-slate-500">No pass history yet.</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
+                      </div>
+                    )}
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <h3 className="font-semibold text-lg text-green-800">Resolved Complaints</h3>
-                  <Badge variant="outline" className="ml-auto">
-                    {complaints.filter(c => c.status === 'resolved').length} resolved
-                  </Badge>
-                </div>
-                <div className="grid gap-4">
-                  {complaints.filter(c => c.status === 'resolved').map(complaint => (
-                    <Card key={complaint.id} className="bg-white border border-slate-200 shadow-xl hover:shadow-2xl transition-all duration-300">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-bold text-slate-900">{complaint.studentName}</p>
-                              <Badge variant="outline" className="capitalize border-emerald-300 text-emerald-700 bg-emerald-50">
-                                {complaint.category}
-                              </Badge>
+                    {complaints.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground mb-3">Recent Complaints</h3>
+                        <div className="space-y-3">
+                          {complaints.slice(0, 5).map(complaint => (
+                            <div key={complaint.id} className="rounded-2xl border border-border p-4 bg-surface">
+                              <div className="flex items-center justify-between gap-3 mb-2">
+                                <p className="font-semibold text-foreground">{complaint.studentName}</p>
+                                <Badge variant="outline" className="text-xs uppercase">
+                                  {complaint.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{complaint.issue}</p>
+                              <p className="text-xs text-muted-foreground mt-2">{new Date(complaint.createdAt).toLocaleString()}</p>
                             </div>
-                            <p className="text-slate-600">{complaint.issue}</p>
-                            <p className="text-sm text-slate-500">{new Date(complaint.createdAt).toLocaleString()}</p>
-                          </div>
-                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Resolved
-                          </Badge>
+                          ))}
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  {complaints.filter(c => c.status === 'resolved').length === 0 && (
-                    <Card className="bg-muted/50">
-                      <CardContent className="p-8 text-center">
-                        <CheckCircle className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-                        <p className="text-slate-500">No resolved complaints yet.</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No activity history available yet.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </main>
     </div>
   );
