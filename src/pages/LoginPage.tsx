@@ -123,31 +123,32 @@ export const LoginPage: React.FC = () => {
       <div className="absolute top-10 right-0 w-60 h-60 rounded-full opacity-8"
         style={{ background: 'radial-gradient(circle, #8CC6C1 0%, transparent 70%)' }} />
 
-      <div className="flex items-center justify-center min-h-screen p-6">
-        <div className="w-full max-w-md">
-          {/* Logo and title */}
-          <div className="text-center mb-8">
-            <div className="w-24 h-24 mx-auto mb-6 rounded-3xl overflow-hidden shadow-lg bg-white">
-              <img src="/tssm-logo.png" alt="TSSM Logo" className="w-full h-full object-cover" />
-            </div>
-            <h1 className="text-4xl font-black text-[#1A1610] mb-2 tracking-wide">SafeNest</h1>
-            <p className="text-[#8B7F6F] text-base leading-relaxed">
-              {mode === 'login' ? 'Secure hostel access for students and parents' : 'Create your SafeNest account'}
-            </p>
-          </div>
-
-          {/* Glass Card */}
-          <div className="bg-white rounded-3xl p-7 shadow-2xl border border-[#E5E0D5]">
-            <div className="mb-6">
-              <h2 className="text-2xl font-black text-[#1A1610] mb-1">
-                {mode === 'login' ? 'Welcome back' : 'Join SafeNest'}
-              </h2>
-              <p className="text-[#8B7F6F] text-sm">
-                {mode === 'login' ? 'Sign in to continue' : 'Start managing passes and approvals'}
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="w-full max-w-6xl mx-auto">
+          <div className="w-full max-w-xl mx-auto">
+            {/* Logo and title */}
+            <div className="text-center mb-8">
+              <div className="w-24 h-24 mx-auto mb-6 rounded-3xl overflow-hidden shadow-lg bg-white">
+                <img src="/tssm-logo.png" alt="TSSM Logo" className="w-full h-full object-cover" />
+              </div>
+              <h1 className="text-4xl font-black text-[#1A1610] mb-2 tracking-wide">SafeNest</h1>
+              <p className="text-[#8B7F6F] text-base leading-relaxed">
+                {mode === 'login' ? 'Secure hostel access for students and parents' : 'Create your SafeNest account'}
               </p>
             </div>
 
-            <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-5">
+            {/* Glass Card */}
+            <div className="bg-white rounded-3xl p-7 shadow-2xl border border-[#E5E0D5]">
+              <div className="mb-6">
+                <h2 className="text-2xl font-black text-[#1A1610] mb-1">
+                  {mode === 'login' ? 'Welcome back' : 'Join SafeNest'}
+                </h2>
+                <p className="text-[#8B7F6F] text-sm">
+                  {mode === 'login' ? 'Sign in to continue' : 'Start managing passes and approvals'}
+                </p>
+              </div>
+
+              <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-5">
               {mode === 'register' && (
                 <div>
                   <Label htmlFor="name" className="text-sm font-semibold text-[#1A1610] mb-2 block">Full name</Label>
@@ -297,5 +298,6 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
     </div>
+  </div>
   );
 };

@@ -6,6 +6,7 @@ import { PassRequest } from '../types';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { SidebarNav } from '../components/SidebarNav';
 import { toast } from 'sonner';
 import {
   LogOut,
@@ -201,10 +202,10 @@ export const StudentDashboard: React.FC = () => {
 
   if (!profile || !studentData) {
     return (
-      <div className="min-h-screen bg-[#0F1115] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#D4A657]/30 border-t-[#D4A657] mx-auto mb-4"></div>
-          <p className="text-[#94A3B8]">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary/30 border-t-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -213,227 +214,207 @@ export const StudentDashboard: React.FC = () => {
   const isIn = studentData.currentStatus === 'IN';
 
   return (
-    <div className="min-h-screen bg-[#0F1115] text-[#F8FAFC]">
-      {/* Header */}
-      <div className="bg-[#141A23] text-[#F8FAFC] border-b border-[#243146] shadow-[0_20px_40px_rgba(0,0,0,0.22)]">
-        <div className="px-6 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-[#1E2530] rounded-2xl flex items-center justify-center overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.15)]">
-                <img src="/tssm-logo.png" alt="TSSM Logo" className="w-full h-full object-cover" />
+    <div className="min-h-screen flex bg-background">
+      <SidebarNav
+        role="student"
+        currentTab={currentTab}
+        onTabChange={setCurrentTab}
+        onLogout={handleLogout}
+        profile={profile}
+      />
+
+      <main className="flex-1 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="sticky top-0 z-10 border-b bg-card border-border px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                <Home className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-[#F8FAFC]">Hi, {profile.name} 👋</h1>
-                <p className="text-[#94A3B8] text-sm">Room {studentData.roomNo}</p>
+                <h1 className="text-xl font-bold text-foreground">Student Dashboard</h1>
+                <p className="text-sm text-muted-foreground">Manage your passes and requests</p>
               </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#11222F] border border-[#243146] rounded-full">
-            <div className={`w-2 h-2 rounded-full ${isIn ? 'bg-emerald-400' : 'bg-orange-400'}`}></div>
-            <span className="text-sm font-medium text-[#F8FAFC]">Status: {studentData.currentStatus}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="px-6 py-6 pb-28">
-
-        {/* Pass Request Form (inline modal) */}
-        {showForm && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4">
-            <div className="bg-[#141A23] rounded-3xl w-full max-w-md p-6 shadow-[0_40px_70px_rgba(0,0,0,0.45)] border border-[#243146]">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-[#F8FAFC]">Request a Pass</h2>
-                <button onClick={() => setShowForm(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <X className="w-5 h-5 text-[#94A3B8]" />
-                </button>
+            <div className="flex items-center gap-4">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted border border-border rounded-full">
+                <div className={`w-2 h-2 rounded-full ${isIn ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                <span className="text-sm font-medium text-foreground">Status: {studentData.currentStatus}</span>
               </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-foreground">{profile.name}</p>
+                <p className="text-xs text-muted-foreground">Room {studentData.roomNo}</p>
+              </div>
+            </div>
+          </div>
+        </header>
 
-              {/* Pass type selector */}
-              <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider mb-3">Pass Type</p>
-              <div className="space-y-3 mb-6">
-                {PASS_TYPES.map((pt) => (
-                  <button
-                    key={pt.id}
-                    onClick={() => setPassType(pt.id)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
-                      passType === pt.id
-                        ? 'border-[#C49A52] bg-[#1F293A]'
-                        : 'border-[#273146] bg-[#111826] hover:border-[#C49A52]/50'
-                    }`}
-                  >
-                    <div className={`w-10 h-10 bg-gradient-to-br ${pt.color} rounded-xl flex items-center justify-center text-white`}>
-                      {pt.icon}
-                    </div>
-                    <div className="text-left">
-                      <p className="font-semibold text-[#F8FAFC] text-sm">{pt.label}</p>
-                      <p className="text-xs text-[#94A3B8]">{pt.description}</p>
-                    </div>
-                    {passType === pt.id && (
-                      <div className="ml-auto w-5 h-5 bg-[#C49A52] rounded-full flex items-center justify-center">
-                        <div className="w-2 h-2 bg-[#0F1115] rounded-full" />
-                      </div>
-                    )}
+        <div className="flex-1 p-6 space-y-6">
+          {/* Pass Request Form (inline modal) */}
+          {showForm && (
+            <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4">
+              <div className="bg-card rounded-3xl w-full max-w-md p-6 shadow-xl border border-border">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-foreground">Request a Pass</h2>
+                  <button onClick={() => setShowForm(false)} className="p-2 hover:bg-muted rounded-full transition-colors">
+                    <X className="w-5 h-5 text-muted-foreground" />
                   </button>
-                ))}
-              </div>
-
-              {/* Destination */}
-              <p className="text-xs font-semibold text-[#94A3B8] uppercase tracking-wider mb-2">Destination</p>
-              <div className="flex items-center gap-3 border border-[#273146] rounded-2xl px-4 py-3 mb-6 bg-[#111826]">
-                <MapPin className="w-4 h-4 text-[#94A3B8] flex-shrink-0" />
-                <input
-                  type="text"
-                  value={reason}
-                  onChange={e => setReason(e.target.value)}
-                  placeholder="e.g. Home visit, Medical appointment…"
-                  className="flex-1 bg-transparent text-[#F8FAFC] text-sm placeholder-[#7C8CA6] outline-none"
-                />
-              </div>
-
-              <Button
-                onClick={handleRequestPass}
-                disabled={submitting}
-                className="w-full bg-gradient-to-r from-[#C49A52] to-[#7A6A55] text-white h-12 rounded-2xl font-semibold"
-              >
-                {submitting ? 'Submitting…' : 'Submit Request'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {currentTab === 'home' && (
-          <>
-            {/* Quick Actions */}
-            <h2 className="text-lg font-bold text-[#F8FAFC] mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <button
-                onClick={() => setShowForm(true)}
-                className="bg-[#111826] rounded-3xl p-6 shadow-[0_18px_40px_rgba(0,0,0,0.2)] border border-[#273146] hover:border-[#3A506B] transition-shadow"
-              >
-                <div className="w-12 h-12 bg-[#1E2530] rounded-2xl flex items-center justify-center mb-3 mx-auto">
-                  <Plus className="w-6 h-6 text-[#D4A657]" />
                 </div>
-                <h3 className="font-bold text-[#F8FAFC] text-center">Request Pass</h3>
-                <p className="text-xs text-[#94A3B8] text-center mt-1">Lunch / Late / Night out</p>
-              </button>
 
-              <button
-                onClick={() => setCurrentTab('scan')}
-                className="bg-[#111826] rounded-3xl p-6 shadow-[0_18px_40px_rgba(0,0,0,0.2)] border border-[#273146] hover:border-[#3A506B] transition-shadow"
-              >
-                <div className="w-12 h-12 bg-[#1E2530] rounded-2xl flex items-center justify-center mb-3 mx-auto">
-                  <QrCode className="w-6 h-6 text-[#6EA8FE]" />
-                </div>
-                <h3 className="font-bold text-[#F8FAFC] text-center">Show Pass QR</h3>
-                <p className="text-xs text-[#94A3B8] text-center mt-1">Entry / Exit</p>
-              </button>
-            </div>
-
-            {/* Recent Passes */}
-            <div className="flex flex-col gap-2 mb-4">
-              <h2 className="text-lg font-bold text-[#F8FAFC]">Recent Passes</h2>
-              <p className="text-sm text-[#94A3B8] max-w-2xl">
-                Every pass now includes explicit approval details for both admin and parent, so you can see who has approved or rejected the request at a glance.
-              </p>
-            </div>
-            <div className="space-y-3">
-              {passes.slice(0, 3).map((pass) => (
-                <PassCard key={pass.id} pass={pass} />
-              ))}
-              {passes.length === 0 && (
-                <div className="text-center py-8 text-[#94A3B8]">
-                  <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No passes yet</p>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {currentTab === 'history' && (
-          <>
-            <div className="flex flex-col gap-2 mb-4">
-              <h2 className="text-lg font-bold text-[#F8FAFC]">Pass History</h2>
-              <p className="text-sm text-[#94A3B8] max-w-2xl">
-                Review past pass requests with admin and parent approval states shown clearly for each entry.
-              </p>
-            </div>
-            <div className="space-y-3">
-              {passes.map((pass) => (
-                <PassCard key={pass.id} pass={pass} />
-              ))}
-              {passes.length === 0 && (
-                <div className="text-center py-8 text-[#94A3B8]">
-                  <History className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>No pass history</p>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {currentTab === 'scan' && (
-          <div className="text-center py-12">
-            <div className="w-32 h-32 bg-[#111826] rounded-3xl shadow-[0_20px_40px_rgba(0,0,0,0.22)] border border-[#273146] flex items-center justify-center mx-auto mb-6">
-              <QrCode className="w-16 h-16 text-[#6EA8FE]" />
-            </div>
-            <h2 className="text-lg font-bold text-[#F8FAFC] mb-2">QR Scanner</h2>
-            <p className="text-[#94A3B8] mb-6 text-sm">
-              Use the mobile app to scan the gate QR code for entry / exit recording.
-            </p>
-            {/* Active/approved passes to show QR for */}
-            {passes.filter(p => p.status === 'approved' || p.status === 'active').length > 0 && (
-              <div className="mt-4 space-y-3 text-left">
-                <p className="text-sm font-semibold text-[#F8FAFC] mb-2">Active Passes</p>
-                {passes.filter(p => p.status === 'approved' || p.status === 'active').map(pass => (
-                  <Card key={pass.id} className="border-[#273146] bg-[#111826]">
-                    <CardContent className="p-4 flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-[#F8FAFC] capitalize">{pass.type} Pass</p>
-                        <p className="text-xs text-[#94A3B8]">{pass.reason}</p>
+                {/* Pass type selector */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Pass Type</p>
+                <div className="space-y-3 mb-6">
+                  {PASS_TYPES.map((pt) => (
+                    <button
+                      key={pt.id}
+                      onClick={() => setPassType(pt.id)}
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                        passType === pt.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border bg-muted/50 hover:border-primary/50'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 bg-gradient-to-br ${pt.color} rounded-xl flex items-center justify-center text-white`}>
+                        {pt.icon}
                       </div>
-                      <Badge className="capitalize bg-[#1F2937] text-[#D4DCE6] border-[#334155]">
-                        {pass.status}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-foreground text-sm">{pt.label}</p>
+                        <p className="text-xs text-muted-foreground">{pt.description}</p>
+                      </div>
+                      {passType === pt.id && (
+                        <div className="ml-auto w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                          <div className="w-2 h-2 bg-background rounded-full" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#111826] border-t border-[#273146] px-6 py-4">
-        <div className="flex justify-around">
-          <NavBtn icon={<Home className="w-6 h-6" />} label="Home"    active={currentTab === 'home'}    onClick={() => setCurrentTab('home')} />
-          <NavBtn icon={<History className="w-6 h-6" />} label="History" active={currentTab === 'history'} onClick={() => setCurrentTab('history')} />
-          <NavBtn icon={<QrCode className="w-6 h-6" />} label="Scan"    active={currentTab === 'scan'}    onClick={() => setCurrentTab('scan')} />
+                {/* Destination */}
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Destination</p>
+                <div className="flex items-center gap-3 border border-border rounded-2xl px-4 py-3 mb-6 bg-background">
+                  <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={reason}
+                    onChange={e => setReason(e.target.value)}
+                    placeholder="e.g. Home visit, Medical appointment…"
+                    className="flex-1 bg-transparent text-foreground text-sm placeholder-muted-foreground outline-none"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleRequestPass}
+                  disabled={submitting}
+                  className="w-full bg-gradient-to-r from-[#C49A52] to-[#7A6A55] text-white h-12 rounded-2xl font-semibold hover:opacity-95"
+                >
+                  {submitting ? 'Submitting…' : 'Submit Request'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentTab === 'home' && (
+            <>
+              {/* Quick Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <Card className="shadow-sm border hover:shadow-md transition-all duration-300 bg-card border-border">
+                  <CardContent className="p-6">
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                      <Plus className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="font-bold text-foreground text-center mb-2">Request Pass</h3>
+                    <p className="text-xs text-muted-foreground text-center mb-4">Lunch / Late / Night out</p>
+                    <Button
+                      onClick={() => setShowForm(true)}
+                      className="w-full bg-gradient-to-r from-[#C49A52] to-[#7A6A55] text-white hover:opacity-95"
+                    >
+                      Request Pass
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border hover:shadow-md transition-all duration-300 bg-card border-border">
+                  <CardContent className="p-6">
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                      <QrCode className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="font-bold text-foreground text-center mb-2">Show Pass QR</h3>
+                    <p className="text-xs text-muted-foreground text-center mb-4">Entry / Exit</p>
+                    <Button
+                      onClick={() => setCurrentTab('scan')}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Show QR Code
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Recent Passes */}
+              <div>
+                <h2 className="text-lg font-bold text-foreground mb-4">Recent Passes</h2>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Every pass now includes explicit approval details for both admin and parent, so you can see who has approved or rejected the request at a glance.
+                </p>
+                <div className="space-y-4">
+                  {passes.slice(0, 3).map((pass) => (
+                    <PassCard key={pass.id} pass={pass} />
+                  ))}
+                  {passes.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>No passes yet</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {currentTab === 'history' && (
+            <div>
+              <h2 className="text-lg font-bold text-foreground mb-4">Pass History</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                View all your pass requests and their approval status.
+              </p>
+              <div className="space-y-4">
+                {passes.map((pass) => (
+                  <PassCard key={pass.id} pass={pass} />
+                ))}
+                {passes.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No pass history yet</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {currentTab === 'scan' && (
+            <div className="max-w-md mx-auto">
+              <Card className="shadow-sm border bg-card border-border">
+                <CardContent className="p-8 text-center">
+                  <div className="w-48 h-48 bg-muted rounded-lg mx-auto mb-6 flex items-center justify-center">
+                    <QrCode className="w-24 h-24 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-bold text-foreground mb-2">Pass QR Code</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Show this QR code at the security gate for entry/exit.
+                  </p>
+                  <div className="text-xs text-muted-foreground">
+                    <p>Student: {profile.name}</p>
+                    <p>Room: {studentData.roomNo}</p>
+                    <p>Status: {studentData.currentStatus}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   );
 };
-
-// ─── small helpers ────────────────────────────────────────────────────────────
-
-function NavBtn({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center p-2 rounded-xl transition-colors ${active ? 'bg-[#C49A52]/10' : ''}`}
-    >
-      <span className={active ? 'text-[#C49A52]' : 'text-[#8B7F6F]'}>{icon}</span>
-      <span className={`text-xs font-medium mt-1 ${active ? 'text-[#C49A52]' : 'text-[#8B7F6F]'}`}>{label}</span>
-    </button>
-  );
-}
