@@ -109,7 +109,7 @@ ThemeData buildAppTheme() {
       titleMedium: TextStyle(color: kText, fontSize: 18, fontWeight: FontWeight.w600),
       labelLarge: TextStyle(color: kText, fontWeight: FontWeight.w700),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: kCard,
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -117,7 +117,7 @@ ThemeData buildAppTheme() {
         side: const BorderSide(color: kBorder),
       ),
     ),
-    dialogTheme: DialogTheme(
+    dialogTheme: DialogThemeData(
       backgroundColor: kCard,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
     ),

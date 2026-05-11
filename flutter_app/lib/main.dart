@@ -232,6 +232,38 @@ class _QrScanPageState extends State<QrScanPage> {
                 throw Exception('Unexpected pass state: $currentStatus');
               }
               await firestore.collection('passes').doc(passId).update(update);
+
+              // Create notification for parent
+              try {
+                final studentDoc = await firestore.collection('students').doc(studentId).get();
+                if (studentDoc.exists) {
+                  final studentData = studentDoc.data()!;
+                  final parentId = studentData['parentId'] as String?;
+                  if (parentId != null) {
+                    final userDoc = await firestore.collection('users').doc(studentId).get();
+                    final studentName = userDoc.exists ? (userDoc.data()!['name'] as String? ?? 'Student') : 'Student';
+
+                    final notificationData = {
+                      'parentId': parentId,
+                      'studentId': studentId,
+                      'studentName': studentName,
+                      'passId': passId,
+                      'type': update['status'] == 'active' ? 'exit' : 'return',
+                      'message': update['status'] == 'active'
+                        ? '$studentName has safely exited the hostel'
+                        : '$studentName has safely returned to the hostel',
+                      'timestamp': DateTime.now().toIso8601String(),
+                      'read': false,
+                    };
+
+                    await firestore.collection('notifications').add(notificationData);
+                  }
+                }
+              } catch (e) {
+                // Don't fail the main operation if notification creation fails
+                debugPrint('Failed to create notification: $e');
+              }
+
               if (!mounted) return;
               final msg = update['status'] == 'active' ? '✅ Exit recorded — safe travels!' : '🏠 Entry marked successfully';
               messenger.showSnackBar(SnackBar(
@@ -257,7 +289,7 @@ class _QrScanPageState extends State<QrScanPage> {
         Center(
           child: Container(
             width: 240, height: 240,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border.all(color: kPrimary, width: 3),
               borderRadius: BorderRadius.circular(24),
             ),

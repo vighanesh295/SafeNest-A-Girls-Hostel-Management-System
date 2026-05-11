@@ -91,5 +91,15 @@ service cloud.firestore {
       allow create: if hasRole('student');
       allow update: if isAdmin();
     }
+
+    match /notifications/{notificationId} {
+      // Parents can only read notifications addressed to them; admins can read/list all
+      allow get: if isAdmin() || (hasRole('parent') && resource.data.parentId == request.auth.uid);
+      allow list: if isAdmin() || hasRole('parent');
+      // Only system (authenticated users) can create notifications
+      allow create: if isAuthenticated();
+      // Parents can mark their own notifications as read
+      allow update: if isAdmin() || (hasRole('parent') && resource.data.parentId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']));
+    }
   }
 }

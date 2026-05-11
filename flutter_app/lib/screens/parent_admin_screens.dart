@@ -14,7 +14,7 @@ class ParentHomePage extends StatefulWidget {
 }
 
 class _ParentHomePageState extends State<ParentHomePage> {
-  int _idx = 0; // 0 = Approvals, 1 = History
+  int _idx = 0; // 0 = Approvals, 1 = Notifications, 2 = History
 
   @override
   Widget build(BuildContext context) {
@@ -61,32 +61,49 @@ class _ParentHomePageState extends State<ParentHomePage> {
               builder: (context, pendingSnap) {
                 final pendingCount = pendingSnap.data?.docs.length ?? 0;
 
-                return Scaffold(
-                  backgroundColor: kBg,
-                  body: IndexedStack(
-                    index: _idx,
-                    children: [
-                      _ApprovalsTab(
-                        studentUid: studentUid,
-                        sName: sName,
-                        room: room,
-                        status: status,
-                        isIn: isIn,
+                // Count unread notifications for badge
+                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: firestore
+                      .collection('notifications')
+                      .where('parentId', isEqualTo: widget.profileData['uid'])
+                      .where('read', isEqualTo: false)
+                      .snapshots(),
+                  builder: (context, notificationSnap) {
+                    final unreadCount = notificationSnap.data?.docs.length ?? 0;
+
+                    return Scaffold(
+                      backgroundColor: kBg,
+                      body: IndexedStack(
+                        index: _idx,
+                        children: [
+                          _ApprovalsTab(
+                            studentUid: studentUid,
+                            sName: sName,
+                            room: room,
+                            status: status,
+                            isIn: isIn,
+                          ),
+                          _NotificationsTab(
+                            parentId: widget.profileData['uid'],
+                            sName: sName,
+                          ),
+                          _HistoryTab(
+                            studentUid: studentUid,
+                            sName: sName,
+                            room: room,
+                            status: status,
+                            isIn: isIn,
+                          ),
+                        ],
                       ),
-                      _HistoryTab(
-                        studentUid: studentUid,
-                        sName: sName,
-                        room: room,
-                        status: status,
-                        isIn: isIn,
+                      bottomNavigationBar: _ParentBottomNav(
+                        index: _idx,
+                        pendingCount: pendingCount,
+                        unreadCount: unreadCount,
+                        onTap: (i) => setState(() => _idx = i),
                       ),
-                    ],
-                  ),
-                  bottomNavigationBar: _ParentBottomNav(
-                    index: _idx,
-                    pendingCount: pendingCount,
-                    onTap: (i) => setState(() => _idx = i),
-                  ),
+                    );
+                  },
                 );
               },
             );
@@ -101,10 +118,12 @@ class _ParentHomePageState extends State<ParentHomePage> {
 class _ParentBottomNav extends StatelessWidget {
   final int index;
   final int pendingCount;
+  final int unreadCount;
   final ValueChanged<int> onTap;
   const _ParentBottomNav(
       {required this.index,
       required this.pendingCount,
+      required this.unreadCount,
       required this.onTap});
 
   @override
@@ -131,10 +150,17 @@ class _ParentBottomNav extends StatelessWidget {
                 onTap: () => onTap(0),
               ),
               _NavItem(
+                icon: Icons.notifications_active_rounded,
+                label: 'Alerts',
+                selected: index == 1,
+                badge: unreadCount,
+                onTap: () => onTap(1),
+              ),
+              _NavItem(
                 icon: Icons.history_rounded,
                 label: 'History',
-                selected: index == 1,
-                onTap: () => onTap(1),
+                selected: index == 2,
+                onTap: () => onTap(2),
               ),
             ],
           ),
@@ -369,6 +395,161 @@ class _HistoryTab extends StatelessWidget {
         ),
       ),
     ]);
+  }
+}
+
+// ── Notifications Tab ─────────────────────────────────────────────────────────
+class _NotificationsTab extends StatelessWidget {
+  final String parentId, sName;
+  const _NotificationsTab({required this.parentId, required this.sName});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: firestore
+          .collection('notifications')
+          .where('parentId', isEqualTo: parentId)
+          .orderBy('timestamp', descending: true)
+          .snapshots(),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator(color: kPrimary)),
+          );
+        }
+
+        final notifications = snap.data!.docs;
+
+        return Scaffold(
+          backgroundColor: kBg,
+          appBar: AppBar(
+            title: const Text('Safety Alerts'),
+            actions: [
+              if (notifications.any((doc) => !(doc.data()['read'] as bool? ?? false)))
+                TextButton(
+                  onPressed: () async {
+                    final batch = firestore.batch();
+                    for (final doc in notifications) {
+                      if (!(doc.data()['read'] as bool? ?? false)) {
+                        batch.update(doc.reference, {'read': true});
+                      }
+                    }
+                    await batch.commit();
+                  },
+                  child: const Text('Mark All Read',
+                      style: TextStyle(color: kPrimary, fontSize: 14)),
+                ),
+            ],
+          ),
+          body: notifications.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.notifications_off_rounded,
+                          size: 64, color: kSubtext.withAlpha(120)),
+                      const SizedBox(height: 16),
+                      const Text('No safety alerts yet',
+                          style: TextStyle(color: kSubtext, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      Text('You\'ll be notified when $sName enters or exits the hostel',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: kSubtext.withAlpha(180), fontSize: 14)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: notifications.length,
+                  itemBuilder: (context, index) {
+                    final notification = notifications[index].data();
+                    final isRead = notification['read'] as bool? ?? false;
+                    final type = notification['type'] as String? ?? 'exit';
+                    final timestamp = DateTime.parse(notification['timestamp'] as String);
+                    final timeAgo = _getTimeAgo(timestamp);
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isRead ? kCard : kPrimary.withAlpha(10),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isRead ? kBorder : kPrimary.withAlpha(30),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: type == 'exit' ? kWarning.withAlpha(20) : kSuccess.withAlpha(20),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              type == 'exit' ? Icons.directions_walk_rounded : Icons.home_rounded,
+                              color: type == 'exit' ? kWarning : kSuccess,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  notification['message'] as String,
+                                  style: TextStyle(
+                                    color: kText,
+                                    fontSize: 14,
+                                    fontWeight: isRead ? FontWeight.w500 : FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  timeAgo,
+                                  style: TextStyle(
+                                    color: kSubtext.withAlpha(150),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!isRead)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: kPrimary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
+    );
+  }
+
+  String _getTimeAgo(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
+    } else {
+      return 'Just now';
+    }
   }
 }
 
