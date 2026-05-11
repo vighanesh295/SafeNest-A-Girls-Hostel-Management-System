@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import '../main.dart' show firestore, QrScanPage;
+import '../main.dart' show firestore;
 import '../theme.dart';
 
 // ── Student Home ─────────────────────────────────────────────────────────────
@@ -33,7 +33,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
           body: IndexedStack(index: _idx, children: [
             _OverviewTab(profileData: widget.profileData, studentData: sd, status: status),
             _HistoryTab(uid: uid),
-            _ScanTab(),
           ]),
           bottomNavigationBar: _BottomNav(index: _idx, onTap: (i) => setState(() => _idx = i)),
         );
@@ -65,7 +64,6 @@ class _BottomNav extends StatelessWidget {
             children: [
               _NavItem(icon: Icons.home_rounded, label: 'Home', selected: index == 0, onTap: () => onTap(0)),
               _NavItem(icon: Icons.history_rounded, label: 'History', selected: index == 1, onTap: () => onTap(1)),
-              _NavItem(icon: Icons.qr_code_scanner_rounded, label: 'Scan', selected: index == 2, onTap: () => onTap(2)),
             ],
           ),
         ),
@@ -174,17 +172,15 @@ class _OverviewTab extends StatelessWidget {
           // Quick actions
           const Text('Quick Actions', style: TextStyle(color: kText, fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 14),
-          Row(children: [
-            Expanded(child: _ActionCard(
-              icon: Icons.note_add_rounded, label: 'Request\nPass', gradient: kGradient,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PassRequestPage(profileData: profileData, studentData: studentData))),
-            )),
-            const SizedBox(width: 14),
-            Expanded(child: _ActionCard(
-              icon: Icons.qr_code_scanner_rounded, label: 'Scan\nQR Code', gradient: kGradientTeal,
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QrScanPage())),
-            )),
-          ]),
+          Center(
+            child: SizedBox(
+              width: 160,
+              child: _ActionCard(
+                icon: Icons.note_add_rounded, label: 'Request\nPass', gradient: kGradient,
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PassRequestPage(profileData: profileData, studentData: studentData))),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           const Text('Recent Passes', style: TextStyle(color: kText, fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 14),
@@ -247,37 +243,7 @@ class _HistoryTab extends StatelessWidget {
   }
 }
 
-// ── Scan Tab ─────────────────────────────────────────────────────────────────
-class _ScanTab extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: kBg,
-      appBar: AppBar(title: const Text('QR Scanner')),
-      body: Center(child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
-            width: 150, height: 150,
-            decoration: BoxDecoration(
-              color: kBg,
-              borderRadius: BorderRadius.circular(34),
-              border: Border.all(color: kBorder),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 24, offset: const Offset(0, 10))],
-            ),
-            child: const Center(child: Icon(Icons.qr_code_scanner_rounded, size: 72, color: kPrimary)),
-          ),
-          const SizedBox(height: 32),
-          const Text('Gate QR Scanner', style: TextStyle(color: kText, fontSize: 22, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          const Text('Scan the gate code to check out and check in with confidence.', textAlign: TextAlign.center, style: TextStyle(color: kSubtext, fontSize: 14, height: 1.6)),
-          const SizedBox(height: 36),
-          GradientButton(label: 'Open Scanner', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QrScanPage()))),
-        ]),
-      )),
-    );
-  }
-}
+
 
 // ── Pass History List ────────────────────────────────────────────────────────
 class PassHistoryList extends StatelessWidget {
