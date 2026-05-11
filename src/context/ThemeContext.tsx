@@ -15,11 +15,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme || 'system';
-    setTheme(savedTheme);
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const savedTheme = (localStorage.getItem('theme') as Theme) || 'system';
+      setTheme(savedTheme);
+    }
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     const root = window.document.documentElement;
 
     let systemTheme: 'light' | 'dark' = 'light';
@@ -33,7 +39,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.classList.remove('light', 'dark');
     root.classList.add(appliedTheme);
 
-    localStorage.setItem('theme', theme);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('theme', theme);
+    }
   }, [theme]);
 
   const value = {

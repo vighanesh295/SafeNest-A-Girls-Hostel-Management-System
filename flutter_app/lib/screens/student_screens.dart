@@ -126,16 +126,16 @@ class _OverviewTab extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
                   Row(children: [
                     Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: Colors.white.withAlpha(90)),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withAlpha(90)),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
                         child: Image.asset('assets/tssm-logo.png', fit: BoxFit.cover),
                       ),
                     ),

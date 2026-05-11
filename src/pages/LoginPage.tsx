@@ -9,6 +9,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import { Shield, Eye, EyeOff, UserPlus, LogIn, Mail, Lock, User, Users } from 'lucide-react';
 
+type RegisterUser = {
+  uid: string;
+  name: string;
+  email: string;
+  role: 'student' | 'parent';
+  createdAt: string;
+  parentEmail?: string;
+};
+
 export const LoginPage: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('');
@@ -64,7 +73,7 @@ export const LoginPage: React.FC = () => {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       const userId = credential.user.uid;
 
-      const userData: any = {
+      const userData: RegisterUser = {
         uid: userId,
         name: name.trim(),
         email: email.trim(),
