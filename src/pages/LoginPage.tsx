@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { auth, db } from '../services/firebase';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -129,7 +129,7 @@ export const LoginPage: React.FC = () => {
             {/* Logo and title */}
             <div className="text-center mb-8">
               <div className="w-24 h-24 mx-auto mb-6 rounded-3xl overflow-hidden shadow-lg bg-white">
-                <img src="/tssm-logo.png" alt="TSSM Logo" className="w-full h-full object-cover" />
+                <img src="/splash-image.png" alt="SafeNest splash logo" className="w-full h-full object-contain p-3" />
               </div>
               <h1 className="text-4xl font-black text-[#1A1610] mb-2 tracking-wide">SafeNest</h1>
               <p className="text-[#8B7F6F] text-base leading-relaxed">

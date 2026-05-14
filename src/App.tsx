@@ -13,7 +13,7 @@ import { ParentDashboard } from './pages/ParentDashboard';
 import { Toaster } from './components/ui/sonner';
 import { Button } from './components/ui/button';
 import { signOut } from 'firebase/auth';
-import { auth } from './lib/firebase';
+import { auth } from './services/firebase';
 import { Shield } from 'lucide-react';
 
 function AppContent() {

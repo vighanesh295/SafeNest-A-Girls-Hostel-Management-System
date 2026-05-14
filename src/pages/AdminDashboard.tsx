@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { collection, query, onSnapshot, doc, updateDoc, orderBy } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db, auth } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { PassRequest, StudentData, Complaint, UserProfile } from '../types';

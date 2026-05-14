@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { collection, query, onSnapshot, doc, addDoc, updateDoc, orderBy, where, limit } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db, auth } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 import { PassRequest } from '../types';
 import { Button } from '../components/ui/button';

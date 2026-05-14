@@ -51,7 +51,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   onLogout,
   onThemeToggle,
   theme = 'light',
-  stats = {},
+  stats = { pendingPasses: 0, openComplaints: 0, pendingApprovals: 0, activePasses: 0 },
   profile,
   studentInfo
 }) => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { collection, query, onSnapshot, doc, getDoc, updateDoc, where, orderBy } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { db, auth } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 import { PassRequest } from '../types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -18,8 +18,13 @@ import {
   CalendarDays,
   MapPin,
   ArrowLeft,
+  Moon,
+  Sunset,
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
+import { SidebarNav } from '../components/SidebarNav';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 
 interface StudentData {
   uid: string;
