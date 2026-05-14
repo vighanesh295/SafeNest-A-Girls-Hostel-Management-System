@@ -1,25 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { collection, query, onSnapshot, doc, addDoc, updateDoc, orderBy, where, limit } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
-import { useAuth } from '../context/AuthContext';
-import { PassRequest } from '../types';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { SidebarNav } from '../components/SidebarNav';
-import { toast } from 'sonner';
-import {
-  LogOut,
-  Home,
-  History,
-  QrCode,
-  Plus,
-  Shield,
-  X,
-  Clock,
-  MapPin,
-  Moon,
-  Sunset
+
+
 } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 

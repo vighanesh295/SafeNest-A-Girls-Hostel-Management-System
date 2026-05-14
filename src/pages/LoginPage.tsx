@@ -128,8 +128,8 @@ export const LoginPage: React.FC = () => {
           <div className="w-full max-w-xl mx-auto">
             {/* Logo and title */}
             <div className="text-center mb-8">
-              <div className="w-24 h-24 mx-auto mb-6 rounded-3xl overflow-hidden shadow-lg bg-white">
-                <img src="/tssm-logo.png" alt="TSSM Logo" className="w-full h-full object-cover" />
+              <div className="w-24 h-24 mx-auto mb-6 rounded-full overflow-hidden shadow-lg bg-white">
+                <img src="/123.png" alt="SafeNest Logo" className="w-full h-full object-contain" />
               </div>
               <h1 className="text-4xl font-black text-[#1A1610] mb-2 tracking-wide">SafeNest</h1>
               <p className="text-[#8B7F6F] text-base leading-relaxed">
