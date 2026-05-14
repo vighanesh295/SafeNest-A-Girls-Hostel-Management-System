@@ -271,13 +271,13 @@ SliverAppBar _buildHeader({
                     height: 42,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: Colors.white.withAlpha(90)),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 3))],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: Image.asset('assets/tssm-logo.png', fit: BoxFit.cover),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Image.asset('assets/tssm-logo.png', fit: BoxFit.contain),
                     ),
                   ),
                   const SizedBox(width: 14),

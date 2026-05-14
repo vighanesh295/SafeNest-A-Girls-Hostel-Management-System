@@ -179,8 +179,8 @@ export const AdminDashboard: React.FC = () => {
         {/* Header */}
         <header className="sticky top-0 z-10 border-b bg-card border-border px-6 py-4">
           <div className="flex items-center justify-end gap-3">
-            <div className="w-10 h-10 rounded-2xl overflow-hidden bg-white/10 border border-border flex items-center justify-center">
-              <img src="/tssm-logo.png" alt="Admin Logo" className="w-8 h-8 object-contain" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/10 border border-border flex items-center justify-center">
+              <img src="/tssm-logo.png" alt="SSM Logo" className="w-full h-full object-cover" />
             </div>
             <div className="text-right">
               <p className="text-sm font-semibold text-foreground">Admin Dashboard</p>
