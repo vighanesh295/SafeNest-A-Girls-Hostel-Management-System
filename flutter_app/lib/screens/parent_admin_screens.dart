@@ -24,6 +24,20 @@ class _ParentHomePageState extends State<ParentHomePage> {
           .where('parentId', isEqualTo: widget.profileData['uid'])
           .snapshots(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Unable to load linked student.\n${snap.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: kSubtext, fontSize: 15),
+                ),
+              ),
+            ),
+          );
+        }
         if (!snap.hasData) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator(color: kPrimary)),
@@ -275,9 +289,13 @@ SliverAppBar _buildHeader({
                       border: Border.all(color: Colors.white.withAlpha(90)),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 3))],
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: Image.asset('assets/tssm-logo.png', fit: BoxFit.contain),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/tssm_logo.png',
+                        fit: BoxFit.cover,
+                        width: 42,
+                        height: 42,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -412,13 +430,28 @@ class _NotificationsTab extends StatelessWidget {
           .orderBy('timestamp', descending: true)
           .snapshots(),
       builder: (context, snap) {
-        if (!snap.hasData) {
+        if (snap.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Unable to load alerts.\n${snap.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: kSubtext, fontSize: 15),
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator(color: kPrimary)),
           );
         }
 
-        final notifications = snap.data!.docs;
+        final notifications = snap.data?.docs ?? [];
 
         return Scaffold(
           backgroundColor: kBg,

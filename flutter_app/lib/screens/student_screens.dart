@@ -134,9 +134,13 @@ class _OverviewTab extends StatelessWidget {
                         border: Border.all(color: Colors.white.withAlpha(90)),
                         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: Image.asset('assets/tssm-logo.png', fit: BoxFit.contain),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/tssm_logo.png',
+                        fit: BoxFit.cover,
+                        width: 56,
+                        height: 56,
+                      ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -200,26 +204,47 @@ class _ActionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        height: 170,
         decoration: BoxDecoration(
           color: kCard,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: kBorder),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.16), blurRadius: 18, offset: const Offset(0, 8))],
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              gradient: gradient,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: Colors.white, size: 24),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: gradient,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: kText,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  height: 1.3,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(label, style: const TextStyle(color: kText, fontWeight: FontWeight.w700, fontSize: 15, height: 1.4)),
-        ]),
+        ),
       ),
     );
   }
@@ -238,7 +263,10 @@ class _HistoryTab extends StatelessWidget {
         title: const Text('Pass History'),
         actions: [IconButton(icon: const Icon(Icons.logout_rounded), onPressed: () => FirebaseAuth.instance.signOut())],
       ),
-      body: Padding(padding: const EdgeInsets.all(16), child: PassHistoryList(studentId: uid)),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: PassHistoryList(studentId: uid, scrollable: true),
+      ),
     );
   }
 }
@@ -249,7 +277,8 @@ class _HistoryTab extends StatelessWidget {
 class PassHistoryList extends StatelessWidget {
   final String studentId;
   final int? limit;
-  const PassHistoryList({super.key, required this.studentId, this.limit});
+  final bool scrollable;
+  const PassHistoryList({super.key, required this.studentId, this.limit, this.scrollable = false});
 
   @override
   Widget build(BuildContext context) {
@@ -267,8 +296,8 @@ class PassHistoryList extends StatelessWidget {
           ]));
         }
         return ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: !scrollable,
+          physics: scrollable ? null : const NeverScrollableScrollPhysics(),
           itemCount: docs.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, i) {
@@ -363,13 +392,16 @@ class _PassRequestPageState extends State<PassRequestPage> {
             const SizedBox(height: 14),
             ...[
               ('lunch', 'Lunch Pass', 'Out for 1 hour', Icons.restaurant_rounded),
-              ('late', 'Late Pass', 'Return by 9 PM', Icons.nightlight_rounded),
+              ('late', 'Late Pass', 'Return by 10 PM', Icons.nightlight_rounded),
               ('nightout', 'Night Out', 'Return next day', Icons.home_rounded),
+              ('class', 'Class Pass', 'Valid till 9 PM', Icons.school_rounded),
+              ('gate', 'Gate Pass', 'Valid till 9 PM', Icons.login_rounded),
             ].map((t) => _PassTypeCard(
               value: t.$1, label: t.$2, sub: t.$3, icon: t.$4,
               selected: passType == t.$1,
               onTap: () => setState(() => passType = t.$1),
             )),
+
           ])),
           const SizedBox(height: 16),
           GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -397,7 +429,7 @@ class _PassRequestPageState extends State<PassRequestPage> {
     try {
       final now = DateTime.now();
       final DateTime ret;
-      if (passType == 'late') {
+      if (passType == 'late' || passType == 'class' || passType == 'gate') {
         final nine = DateTime(now.year, now.month, now.day, 21);
         ret = now.isBefore(nine) ? nine : nine.add(const Duration(days: 1));
       } else if (passType == 'nightout') {
@@ -503,8 +535,7 @@ class PassReceiptScreen extends StatelessWidget {
             const Divider(color: kBorder, height: 24),
             _row('Room', roomNo),
           ])),
-          const SizedBox(height: 20),
-          _buildApprovalStatus(passData),
+      
           const SizedBox(height: 20),
           _buildApprovalStatus(passData),
           const SizedBox(height: 20),

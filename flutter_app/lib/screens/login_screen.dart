@@ -95,7 +95,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             borderRadius: BorderRadius.circular(28),
                             border: Border.all(color: kBorder),
                           ),
-                          child: const Icon(Icons.shield_rounded, size: 44, color: kPrimary),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Image.asset('assets/images/tssm_logo.png', fit: BoxFit.contain),
+                          ),
                         ),
                         const SizedBox(height: 18),
                         const Text('SafeNest',
@@ -134,6 +137,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           _field(_email, 'Email address', Icons.email_rounded, type: TextInputType.emailAddress),
                           const SizedBox(height: 16),
                           _pwField(),
+                          if (_isLogin) const SizedBox(height: 16),
                           if (!_isLogin) ...[
                             const SizedBox(height: 16),
                             _roleDropdown(),

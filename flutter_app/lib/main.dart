@@ -12,6 +12,7 @@ import 'theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/student_screens.dart';
 import 'screens/parent_admin_screens.dart';
+import 'screens/splash_screen.dart';
 
 late final FirebaseFirestore firestore;
 
@@ -53,7 +54,11 @@ class SafeNestApp extends StatelessWidget {
         title: 'SafeNest',
         debugShowCheckedModeBanner: false,
         theme: buildAppTheme(),
-        home: const AuthWrapper(),
+        initialRoute: '/',
+        routes: {
+          '/': (_) => const SplashScreen(),
+          '/home': (_) => const AuthWrapper(),
+        },
       ),
     );
   }

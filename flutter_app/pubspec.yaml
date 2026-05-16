@@ -24,20 +24,18 @@ dev_dependencies:
 
 flutter_native_splash:
   color: "#000000"
-  image: assets/splash_screen.png
-  image_dark: assets/splash_screen.png
-  android_gravity: center
-  ios_content_mode: scaleAspectFit
+  image: assets/images/splash_screen.png
+
+  android_12:
+    color: "#000000"
+    image: assets/images/splash_screen.png
+
   fullscreen: true
   web: false
-  android_12:
-    image: assets/splash_screen.png
-    image_dark: assets/splash_screen.png
-    icon_background_color: "#000000"
 
 flutter:
   uses-material-design: true
   assets:
-    - assets/splash_screen.png
-    
-    
+  - assets/images/logo.png
+  - assets/images/splash_screen.png
+  - assets/images/tssm_logo.png
