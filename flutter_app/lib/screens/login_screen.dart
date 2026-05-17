@@ -276,6 +276,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           'name': name,
           'email': email,
           'role': _role,
+          'isApproved': false,
+          'approvalStatus': 'pending',
+          'approvedBy': null,
+          'approvedAt': null,
           'createdAt': DateTime.now().toIso8601String(),
         });
         if (_role == 'student') {
@@ -285,6 +289,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             'roomNo': 'TBD',
             'currentStatus': 'IN',
           });
+        }
+        // Show approval-pending message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: const Text('Account created! Awaiting admin approval before you can access the app.'),
+            backgroundColor: kPrimary,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ));
         }
       }
     } on FirebaseAuthException catch (e) {

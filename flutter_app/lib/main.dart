@@ -13,6 +13,7 @@ import 'screens/parent_admin_screens.dart';
 import 'screens/splash_screen.dart';
 import 'screens/guard_scanner_screen.dart';
 import 'screens/security_dashboard.dart';
+import 'screens/approval_pending_screen.dart';
 
 late final FirebaseFirestore firestore;
 
@@ -123,6 +124,15 @@ class AuthWrapper extends StatelessWidget {
             }
             final profileData = profileSnapshot.data!.data()!;
             final role = profileData['role'] as String? ?? 'student';
+
+            // ── Approval gate ──────────────────────────────────────────────
+            // Admins always bypass. For all other roles, isApproved == false
+            // means the account is awaiting admin review. If the field is
+            // absent (legacy accounts) or true, the user passes through.
+            if (role != 'admin' && profileData['isApproved'] == false) {
+              return ApprovalPendingScreen(profileData: profileData);
+            }
+            // ── Role-based routing ─────────────────────────────────────────
             if (role == 'admin')    return const AdminHomePage();
             if (role == 'parent')   return ParentHomePage(profileData: profileData);
             if (role == 'guard')    return const GuardScannerScreen();
