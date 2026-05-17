@@ -91,7 +91,41 @@ class _QrScannerPageState extends State<_QrScannerPage> {
         ],
       ),
       body: Stack(children: [
-        MobileScanner(controller: _ctrl, onDetect: _onDetect),
+        MobileScanner(
+          controller: _ctrl,
+          onDetect: _onDetect,
+          // C-03: handle camera permission denied gracefully
+          errorBuilder: (context, error, child) {
+            final isPermission = error.errorCode == MobileScannerErrorCode.permissionDenied;
+            return Container(
+              color: Colors.black,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(
+                      isPermission ? Icons.no_photography_rounded : Icons.error_outline_rounded,
+                      color: Colors.white70, size: 72,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      isPermission ? 'Camera Permission Required' : 'Scanner Error',
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      isPermission
+                          ? 'Please go to Settings → App Permissions\nand enable Camera for SafeNest.'
+                          : error.errorCode.toString(),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white60, fontSize: 13, height: 1.6),
+                    ),
+                  ]),
+                ),
+              ),
+            );
+          },
+        ),
         // Scan frame overlay
         Center(
           child: Container(

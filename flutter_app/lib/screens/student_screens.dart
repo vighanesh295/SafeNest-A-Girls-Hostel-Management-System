@@ -283,8 +283,10 @@ class PassHistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var q = firestore.collection('passes').where('studentId', isEqualTo: studentId).orderBy('createdAt', descending: true);
+    // M-02: apply limit at DB level, not client-side
+    final stream = (limit != null ? q.limit(limit!) : q).snapshots();
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: q.snapshots(),
+      stream: stream,
       builder: (context, snap) {
         if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: kPrimary));
         final docs = snap.data!.docs.take(limit ?? 999).toList();
@@ -375,7 +377,7 @@ class PassRequestPage extends StatefulWidget {
 }
 
 class _PassRequestPageState extends State<PassRequestPage> {
-  String passType = 'lunch';
+  String _passType = 'lunch';
   final _reason = TextEditingController();
   bool _loading = false;
 
@@ -401,8 +403,8 @@ class _PassRequestPageState extends State<PassRequestPage> {
               ('gate', 'Gate Pass', 'Valid till 9 PM', Icons.login_rounded),
             ].map((t) => _PassTypeCard(
               value: t.$1, label: t.$2, sub: t.$3, icon: t.$4,
-              selected: passType == t.$1,
-              onTap: () => setState(() => passType = t.$1),
+              selected: _passType == t.$1,
+              onTap: () => setState(() => _passType = t.$1),
             )),
 
           ])),
@@ -427,41 +429,56 @@ class _PassRequestPageState extends State<PassRequestPage> {
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     final reason = _reason.text.trim();
-    if (reason.isEmpty) { messenger.showSnackBar(const SnackBar(content: Text('Please enter destination'), backgroundColor: kDanger)); return; }
+    if (reason.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('Please enter destination'), backgroundColor: kDanger));
+      return;
+    }
     setState(() => _loading = true);
     try {
+      final uid = widget.profileData['uid'] as String;
+
+      // M-08: guard against duplicate active/pending passes
+      final existing = await firestore.collection('passes')
+          .where('studentId', isEqualTo: uid)
+          .where('status', whereIn: ['pending', 'approved', 'active'])
+          .limit(1).get();
+      if (existing.docs.isNotEmpty) {
+        throw Exception('You already have an active or pending pass. Wait for it to complete before requesting a new one.');
+      }
+
       final now = DateTime.now();
       final DateTime ret;
-      if (passType == 'late' || passType == 'class' || passType == 'gate') {
+      if (_passType == 'late' || _passType == 'class' || _passType == 'gate') {
         final nine = DateTime(now.year, now.month, now.day, 21);
         ret = now.isBefore(nine) ? nine : nine.add(const Duration(days: 1));
-      } else if (passType == 'nightout') {
+      } else if (_passType == 'nightout') {
         final tom = now.add(const Duration(days: 1));
         ret = DateTime(tom.year, tom.month, tom.day, 12);
       } else {
         ret = now.add(const Duration(hours: 1));
       }
 
-      // Lunch Pass: parent approval is not required — pre-approved; parent gets notification
-      final isLunch = passType == 'lunch';
-      final parentId = widget.studentData['parentId'] as String?;
+      final isLunch = _passType == 'lunch';
+      // M-07: re-fetch studentData to avoid stale parentId
+      final freshStudentSnap = await firestore.collection('students').doc(uid).get();
+      final parentId = freshStudentSnap.data()?['parentId'] as String?;
 
       final docRef = await firestore.collection('passes').add({
-        'studentId': widget.profileData['uid'],
+        'studentId': uid,
         'studentName': widget.profileData['name'],
-        'type': passType, 'reason': reason,
+        'type': _passType, 'reason': reason,
         'expectedReturnTime': ret.toIso8601String(),
         'parentApproval': isLunch ? 'approved' : 'pending',
         'adminApproval': 'pending', 'status': 'pending',
+        'scanCount': 0, 'completed': false, 'currentState': 'IN',
         'createdAt': now.toIso8601String(),
       });
 
-      // Send informational notification to parent for Lunch Pass
       if (isLunch && parentId != null && parentId.isNotEmpty) {
         try {
           await firestore.collection('notifications').add({
             'parentId': parentId,
-            'studentId': widget.profileData['uid'],
+            'studentId': uid,
             'studentName': widget.profileData['name'],
             'passId': docRef.id,
             'type': 'lunch_pass_notification',
@@ -469,16 +486,17 @@ class _PassRequestPageState extends State<PassRequestPage> {
             'read': false,
             'createdAt': now.toIso8601String(),
           });
-        } catch (_) {
-          // Notification failure is non-critical
-        }
+        } catch (_) { /* non-critical */ }
       }
 
       if (!mounted) return;
       navigator.pushReplacement(MaterialPageRoute(builder: (_) => PassReceiptScreen(
-        passData: {'id': docRef.id, 'studentId': widget.profileData['uid'], 'studentName': widget.profileData['name'],
-          'type': passType, 'reason': reason, 'expectedReturnTime': ret.toIso8601String(), 'createdAt': now.toIso8601String()},
-        roomNo: widget.studentData['roomNo'] ?? 'N/A',
+        passData: {'id': docRef.id, 'studentId': uid,
+          'studentName': widget.profileData['name'],
+          'type': _passType, 'reason': reason,
+          'expectedReturnTime': ret.toIso8601String(),
+          'createdAt': now.toIso8601String()},
+        roomNo: freshStudentSnap.data()?['roomNo'] as String? ?? widget.studentData['roomNo'] ?? 'N/A',
       )));
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: kDanger));
@@ -524,56 +542,87 @@ class _PassTypeCard extends StatelessWidget {
 }
 
 // ── Pass Receipt ─────────────────────────────────────────────────────────────
+// C-01: converted to live StreamBuilder so QR appears automatically after approval
 class PassReceiptScreen extends StatelessWidget {
-  final Map<String, dynamic> passData;
+  final Map<String, dynamic> passData; // initial/static data
   final String roomNo;
   const PassReceiptScreen({super.key, required this.passData, required this.roomNo});
 
   @override
   Widget build(BuildContext context) {
-    final qr = jsonEncode({'passId': passData['id'], 'studentId': passData['studentId']});
-    final type = (passData['type'] as String? ?? '').toUpperCase();
-    final status = passData['status'] as String? ?? 'pending';
-    final isApproved = status == 'approved' || status == 'active' || status == 'completed';
-    final ret = DateTime.parse(passData['expectedReturnTime']).toLocal();
+    final passId = passData['id'] as String? ?? '';
+    // Stream live updates from Firestore so approval & QR update in real time
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: passId.isNotEmpty
+          ? firestore.collection('passes').doc(passId).snapshots()
+          : const Stream.empty(),
+      builder: (context, snap) {
+        // Merge: live Firestore data overrides initial static data
+        final live = snap.data?.data() ?? {};
+        final data = {...passData, ...live, 'id': passId};
+        return _buildScreen(context, data);
+      },
+    );
+  }
+
+  Widget _buildScreen(BuildContext context, Map<String, dynamic> data) {
+    final passId    = data['id'] as String? ?? '';
+    final studentId = data['studentId'] as String? ?? '';
+    final qr        = jsonEncode({'passId': passId, 'studentId': studentId});
+    final type      = (data['type'] as String? ?? '').toUpperCase();
+    final status    = data['status'] as String? ?? 'pending';
+    final isApproved = status == 'approved' || status == 'active';
+    final isCompleted = status == 'completed';
+    // M-05: null-safe DateTime parse
+    final retRaw = data['expectedReturnTime'] as String? ?? '';
+    final ret = retRaw.isNotEmpty ? (DateTime.tryParse(retRaw)?.toLocal() ?? DateTime.now()) : DateTime.now();
+    final passType = data['type'] as String? ?? '';
+
     return Scaffold(
       backgroundColor: kBg,
       appBar: AppBar(title: const Text('Pass Request')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // Header banner
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(gradient: kGradient, borderRadius: BorderRadius.circular(24),
               boxShadow: [BoxShadow(color: kPrimary.withAlpha(80), blurRadius: 20, offset: const Offset(0, 8))]),
             child: Column(children: [
-              const Icon(Icons.hourglass_top_rounded, color: Colors.white, size: 48),
+              Icon(
+                isApproved || isCompleted ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
+                color: Colors.white, size: 48,
+              ),
               const SizedBox(height: 10),
-              const Text('Pass Request Sent', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+              Text(
+                isApproved ? 'Pass Approved!' : (isCompleted ? 'Pass Completed' : 'Request Sent'),
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
+              ),
               const SizedBox(height: 4),
-              Builder(builder: (context) {
-                final t = passData['type'] as String? ?? '';
-                return Text(
-                  t == 'lunch'
-                    ? 'Awaiting admin approval (parent notified)'
-                    : 'Awaiting admin and parent approval',
-                  style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 13),
-                );
-              }),
+              Text(
+                isApproved
+                  ? 'Show the QR code below at the gate'
+                  : (isCompleted
+                    ? 'This pass has been used successfully'
+                    : (passType == 'lunch' ? 'Awaiting admin approval (parent notified)' : 'Awaiting admin and parent approval')),
+                style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
             ]),
           ),
           const SizedBox(height: 20),
           GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _row('Type', type), const Divider(color: kBorder, height: 24),
-            _row('Destination', passData['reason'] ?? ''), const Divider(color: kBorder, height: 24),
+            _row('Destination', data['reason'] as String? ?? ''), const Divider(color: kBorder, height: 24),
             _row('Return by', '${ret.day}/${ret.month}/${ret.year}  ${ret.hour.toString().padLeft(2,'0')}:${ret.minute.toString().padLeft(2,'0')}'),
             const Divider(color: kBorder, height: 24),
             _row('Room', roomNo),
           ])),
-      
           const SizedBox(height: 20),
-          _buildApprovalStatus(passData),
+          _buildApprovalStatus(data),
           const SizedBox(height: 20),
+          // QR section — only shows after full approval
           if (isApproved) ...[
             GlassCard(
               padding: const EdgeInsets.all(24),
@@ -586,18 +635,34 @@ class PassReceiptScreen extends StatelessWidget {
                   child: QrImageView(data: qr, size: 180, backgroundColor: Colors.white),
                 ),
                 const SizedBox(height: 12),
-                const Text('Scan to mark exit · scan again to mark return', textAlign: TextAlign.center, style: TextStyle(color: kSubtext, fontSize: 12)),
+                const Text('Scan to mark exit · scan again to mark return',
+                    textAlign: TextAlign.center, style: TextStyle(color: kSubtext, fontSize: 12)),
+              ]),
+            ),
+          ] else if (isCompleted) ...[
+            GlassCard(
+              padding: const EdgeInsets.all(24),
+              child: Column(children: [
+                const Icon(Icons.verified_rounded, size: 44, color: kSuccess),
+                const SizedBox(height: 12),
+                const Text('Pass journey complete!', textAlign: TextAlign.center,
+                    style: TextStyle(color: kText, fontSize: 14, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                const Text('Both exit and return have been recorded.',
+                    textAlign: TextAlign.center, style: TextStyle(color: kSubtext, fontSize: 12)),
               ]),
             ),
           ] else ...[
-          const GlassCard(
+            const GlassCard(
               padding: EdgeInsets.all(24),
               child: Column(children: [
                 Icon(Icons.hourglass_top_rounded, size: 44, color: kSubtext),
                 SizedBox(height: 16),
-                Text('Pass QR will appear once approval is complete.', textAlign: TextAlign.center, style: TextStyle(color: kText, fontSize: 14, fontWeight: FontWeight.w700)),
+                Text('QR will appear once approved', textAlign: TextAlign.center,
+                    style: TextStyle(color: kText, fontSize: 14, fontWeight: FontWeight.w700)),
                 SizedBox(height: 8),
-                Text('Your request is pending admin approval.', textAlign: TextAlign.center, style: TextStyle(color: kSubtext, fontSize: 12)),
+                Text('This page updates automatically — no need to refresh.',
+                    textAlign: TextAlign.center, style: TextStyle(color: kSubtext, fontSize: 12)),
               ]),
             ),
           ],
@@ -605,7 +670,8 @@ class PassReceiptScreen extends StatelessWidget {
           OutlinedButton(
             onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
             style: OutlinedButton.styleFrom(foregroundColor: kText, side: const BorderSide(color: kBorder),
-              minimumSize: const Size(double.infinity, 52), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              minimumSize: const Size(double.infinity, 52),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
             child: const Text('Back to Dashboard'),
           ),
         ]),
@@ -619,7 +685,7 @@ class PassReceiptScreen extends StatelessWidget {
   ]);
 
   Widget _buildApprovalStatus(Map<String, dynamic> data) {
-    final adminApproval = data['adminApproval'] as String? ?? 'pending';
+    final adminApproval  = data['adminApproval']  as String? ?? 'pending';
     final parentApproval = data['parentApproval'] as String? ?? 'pending';
     final isLunch = (data['type'] as String? ?? '') == 'lunch';
     return GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -627,44 +693,30 @@ class PassReceiptScreen extends StatelessWidget {
       const SizedBox(height: 16),
       _approvalStatusRow('Admin', adminApproval),
       const SizedBox(height: 12),
-      if (isLunch)
-        _notifiedRow()
-      else
-        _approvalStatusRow('Parent', parentApproval),
+      if (isLunch) _notifiedRow() else _approvalStatusRow('Parent', parentApproval),
     ]));
   }
 
-  Widget _notifiedRow() {
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      const Text('Parent', style: TextStyle(color: kSubtext, fontSize: 13)),
-      Row(children: [
-        const Icon(Icons.campaign_rounded, color: Colors.blue, size: 18),
-        const SizedBox(width: 8),
-        const Text('Notified', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600, fontSize: 13)),
-      ]),
-    ]);
-  }
+  Widget _notifiedRow() => Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+    const Text('Parent', style: TextStyle(color: kSubtext, fontSize: 13)),
+    const Row(children: [
+      Icon(Icons.campaign_rounded, color: Colors.blue, size: 18),
+      SizedBox(width: 8),
+      Text('Notified', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600, fontSize: 13)),
+    ]),
+  ]);
 
   Widget _approvalStatusRow(String role, String status) {
     final isApproved = status == 'approved';
     final isRejected = status == 'rejected';
+    final color = isApproved ? Colors.green : (isRejected ? Colors.red : Colors.orange);
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
       Text(role, style: const TextStyle(color: kSubtext, fontSize: 13)),
       Row(children: [
-        Icon(
-          isApproved ? Icons.check_circle : (isRejected ? Icons.cancel : Icons.schedule),
-          color: isApproved ? Colors.green : (isRejected ? Colors.red : Colors.orange),
-          size: 18,
-        ),
+        Icon(isApproved ? Icons.check_circle : (isRejected ? Icons.cancel : Icons.schedule), color: color, size: 18),
         const SizedBox(width: 8),
-        Text(
-          status.replaceFirst(status[0], status[0].toUpperCase()),
-          style: TextStyle(
-            color: isApproved ? Colors.green : (isRejected ? Colors.red : Colors.orange),
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
+        Text(status.isEmpty ? 'Pending' : '${status[0].toUpperCase()}${status.substring(1)}',
+            style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
       ]),
     ]);
   }
@@ -741,7 +793,9 @@ class PassDetailsScreen extends StatelessWidget {
     final qr = jsonEncode({'passId': passData['id'], 'studentId': passData['studentId']});
     final type = (passData['type'] as String? ?? '').toUpperCase();
     final status = passData['status'] as String? ?? 'pending';
-    final ret = DateTime.parse(passData['expectedReturnTime'] as String? ?? '').toLocal();
+    // M-05: null-safe DateTime parse
+    final retRaw = passData['expectedReturnTime'] as String? ?? '';
+    final ret = retRaw.isNotEmpty ? (DateTime.tryParse(retRaw)?.toLocal() ?? DateTime.now()) : DateTime.now();
     
     return Scaffold(
       backgroundColor: kBg,
