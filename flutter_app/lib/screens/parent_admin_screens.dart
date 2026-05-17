@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../main.dart' show firestore;
 import '../theme.dart';
+import 'guard_scanner_screen.dart';
 
 // ── Parent Home (with tabs) ───────────────────────────────────────────────────
 class ParentHomePage extends StatefulWidget {
@@ -427,7 +428,7 @@ class _NotificationsTab extends StatelessWidget {
       stream: firestore
           .collection('notifications')
           .where('parentId', isEqualTo: parentId)
-          .orderBy('timestamp', descending: true)
+          .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snap) {
         if (snap.hasError) {
@@ -498,7 +499,10 @@ class _NotificationsTab extends StatelessWidget {
                     final notification = notifications[index].data();
                     final isRead = notification['read'] as bool? ?? false;
                     final type = notification['type'] as String? ?? 'exit';
-                    final timestamp = DateTime.parse(notification['timestamp'] as String);
+                    final isLunchNotif = type == 'lunch_pass_notification';
+                    // Support both 'createdAt' (new) and 'timestamp' (legacy) fields
+                    final rawTime = notification['createdAt'] as String? ?? notification['timestamp'] as String? ?? '';
+                    final timestamp = rawTime.isNotEmpty ? DateTime.tryParse(rawTime) ?? DateTime.now() : DateTime.now();
                     final timeAgo = _getTimeAgo(timestamp);
 
                     return Container(
@@ -518,12 +522,18 @@ class _NotificationsTab extends StatelessWidget {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: type == 'exit' ? kWarning.withAlpha(20) : kSuccess.withAlpha(20),
+                              color: isLunchNotif
+                                  ? kPrimary.withAlpha(20)
+                                  : (type == 'exit' ? kWarning.withAlpha(20) : kSuccess.withAlpha(20)),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
-                              type == 'exit' ? Icons.directions_walk_rounded : Icons.home_rounded,
-                              color: type == 'exit' ? kWarning : kSuccess,
+                              isLunchNotif
+                                  ? Icons.restaurant_rounded
+                                  : (type == 'exit' ? Icons.directions_walk_rounded : Icons.home_rounded),
+                              color: isLunchNotif
+                                  ? kPrimary
+                                  : (type == 'exit' ? kWarning : kSuccess),
                               size: 20,
                             ),
                           ),
@@ -618,9 +628,16 @@ class _PassHistoryList extends StatelessWidget {
           return const Center(
               child: CircularProgressIndicator(color: kPrimary));
         }
-        // Show all passes that are not in pure pending state
+        // Show all passes that are not in pure pending state,
+        // EXCEPT lunch passes which are included regardless of status
+        // (parent monitors them, not approves them)
         final docs = snap.data!.docs
-            .where((d) => d.data()['status'] != 'pending')
+            .where((d) {
+              final data = d.data();
+              final status = data['status'] as String? ?? '';
+              final type = data['type'] as String? ?? '';
+              return status != 'pending' || type == 'lunch';
+            })
             .toList();
 
         if (docs.isEmpty) {
@@ -724,11 +741,14 @@ class _PassHistoryList extends StatelessWidget {
 
                   const SizedBox(height: 10),
 
-                  // Approval pills
+                  // Approval pills — lunch passes show 'Notified' for parent
                   Row(children: [
                     _ApprovalPill(label: 'Admin', status: adminApp),
                     const SizedBox(width: 8),
-                    _ApprovalPill(label: 'Parent', status: parentApp),
+                    if (type == 'lunch')
+                      _LunchParentNotifiedPill()
+                    else
+                      _ApprovalPill(label: 'Parent', status: parentApp),
                   ]),
                 ],
               ),
@@ -770,6 +790,30 @@ class _ApprovalPill extends StatelessWidget {
         Text('$label: $status',
             style: TextStyle(
                 color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
+}
+
+/// Shown in the parent history tab for Lunch Pass instead of the parent approval pill
+class _LunchParentNotifiedPill extends StatelessWidget {
+  const _LunchParentNotifiedPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF3B82F6).withAlpha(80)),
+      ),
+      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.campaign_rounded, size: 12, color: Color(0xFF2563EB)),
+        SizedBox(width: 4),
+        Text('Parent: Notified',
+            style: TextStyle(
+                color: Color(0xFF2563EB), fontSize: 11, fontWeight: FontWeight.w700)),
       ]),
     );
   }
@@ -1045,6 +1089,12 @@ class AdminHomePage extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style:
                     TextStyle(color: kSubtext, fontSize: 14, height: 1.6)),
+            const SizedBox(height: 32),
+            GradientButton(
+              label: 'Open Gate Scanner',
+              onTap: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const GuardScannerScreen())),
+            ),
           ]),
         ),
       ),

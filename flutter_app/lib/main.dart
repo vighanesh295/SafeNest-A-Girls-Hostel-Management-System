@@ -13,6 +13,8 @@ import 'screens/login_screen.dart';
 import 'screens/student_screens.dart';
 import 'screens/parent_admin_screens.dart';
 import 'screens/splash_screen.dart';
+import 'screens/guard_scanner_screen.dart';
+import 'screens/security_dashboard.dart';
 
 late final FirebaseFirestore firestore;
 
@@ -123,8 +125,10 @@ class AuthWrapper extends StatelessWidget {
             }
             final profileData = profileSnapshot.data!.data()!;
             final role = profileData['role'] as String? ?? 'student';
-            if (role == 'admin')  return const AdminHomePage();
-            if (role == 'parent') return ParentHomePage(profileData: profileData);
+            if (role == 'admin')    return const AdminHomePage();
+            if (role == 'parent')   return ParentHomePage(profileData: profileData);
+            if (role == 'guard')    return const GuardScannerScreen();
+            if (role == 'security') return SecurityDashboardScreen(profileData: profileData);
             return StudentHomePage(profileData: profileData);
           },
         );

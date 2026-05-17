@@ -332,15 +332,18 @@ class PassHistoryList extends StatelessWidget {
                     ]),
                   ]),
                   const SizedBox(height: 12),
-                  // Approval status badges
+                  // Approval status badges — lunch pass shows 'Notified' for parent
                   Row(children: [
-                    const SizedBox(width: 58), // Align with icon + spacing
+                    const SizedBox(width: 58),
                     Expanded(child: Wrap(
                       spacing: 8,
                       runSpacing: 4,
                       children: [
                         _ApprovalBadge(role: 'Admin', status: adminApproval),
-                        _ApprovalBadge(role: 'Parent', status: parentApproval),
+                        if ((p['type'] as String? ?? '') == 'lunch')
+                          const _LunchParentNotifiedBadge()
+                        else
+                          _ApprovalBadge(role: 'Parent', status: parentApproval),
                       ],
                     )),
                   ]),
@@ -438,18 +441,42 @@ class _PassRequestPageState extends State<PassRequestPage> {
       } else {
         ret = now.add(const Duration(hours: 1));
       }
-      final ref = await firestore.collection('passes').add({
+
+      // Lunch Pass: parent approval is not required — pre-approved; parent gets notification
+      final isLunch = passType == 'lunch';
+      final parentId = widget.studentData['parentId'] as String?;
+
+      final docRef = await firestore.collection('passes').add({
         'studentId': widget.profileData['uid'],
         'studentName': widget.profileData['name'],
         'type': passType, 'reason': reason,
         'expectedReturnTime': ret.toIso8601String(),
-        'parentApproval': 'pending', // ALL pass types require parent approval
+        'parentApproval': isLunch ? 'approved' : 'pending',
         'adminApproval': 'pending', 'status': 'pending',
         'createdAt': now.toIso8601String(),
       });
+
+      // Send informational notification to parent for Lunch Pass
+      if (isLunch && parentId != null && parentId.isNotEmpty) {
+        try {
+          await firestore.collection('notifications').add({
+            'parentId': parentId,
+            'studentId': widget.profileData['uid'],
+            'studentName': widget.profileData['name'],
+            'passId': docRef.id,
+            'type': 'lunch_pass_notification',
+            'message': '${widget.profileData['name']} has requested a Lunch Pass (1-hour outing). No action required.',
+            'read': false,
+            'createdAt': now.toIso8601String(),
+          });
+        } catch (_) {
+          // Notification failure is non-critical
+        }
+      }
+
       if (!mounted) return;
       navigator.pushReplacement(MaterialPageRoute(builder: (_) => PassReceiptScreen(
-        passData: {'id': ref.id, 'studentId': widget.profileData['uid'], 'studentName': widget.profileData['name'],
+        passData: {'id': docRef.id, 'studentId': widget.profileData['uid'], 'studentName': widget.profileData['name'],
           'type': passType, 'reason': reason, 'expectedReturnTime': ret.toIso8601String(), 'createdAt': now.toIso8601String()},
         roomNo: widget.studentData['roomNo'] ?? 'N/A',
       )));
@@ -524,7 +551,15 @@ class PassReceiptScreen extends StatelessWidget {
               const SizedBox(height: 10),
               const Text('Pass Request Sent', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text('Awaiting admin and parent approval', style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 13)),
+              Builder(builder: (context) {
+                final t = passData['type'] as String? ?? '';
+                return Text(
+                  t == 'lunch'
+                    ? 'Awaiting admin approval (parent notified)'
+                    : 'Awaiting admin and parent approval',
+                  style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 13),
+                );
+              }),
             ]),
           ),
           const SizedBox(height: 20),
@@ -555,14 +590,14 @@ class PassReceiptScreen extends StatelessWidget {
               ]),
             ),
           ] else ...[
-            const GlassCard(
+          const GlassCard(
               padding: EdgeInsets.all(24),
               child: Column(children: [
                 Icon(Icons.hourglass_top_rounded, size: 44, color: kSubtext),
                 SizedBox(height: 16),
-                Text('Pass QR will appear once both approvals are complete.', textAlign: TextAlign.center, style: TextStyle(color: kText, fontSize: 14, fontWeight: FontWeight.w700)),
+                Text('Pass QR will appear once approval is complete.', textAlign: TextAlign.center, style: TextStyle(color: kText, fontSize: 14, fontWeight: FontWeight.w700)),
                 SizedBox(height: 8),
-                Text('This request is pending approval from the admin and parent.', textAlign: TextAlign.center, style: TextStyle(color: kSubtext, fontSize: 12)),
+                Text('Your request is pending admin approval.', textAlign: TextAlign.center, style: TextStyle(color: kSubtext, fontSize: 12)),
               ]),
             ),
           ],
@@ -586,13 +621,28 @@ class PassReceiptScreen extends StatelessWidget {
   Widget _buildApprovalStatus(Map<String, dynamic> data) {
     final adminApproval = data['adminApproval'] as String? ?? 'pending';
     final parentApproval = data['parentApproval'] as String? ?? 'pending';
+    final isLunch = (data['type'] as String? ?? '') == 'lunch';
     return GlassCard(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text('Approval Status', style: TextStyle(color: kText, fontWeight: FontWeight.w700, fontSize: 14)),
       const SizedBox(height: 16),
       _approvalStatusRow('Admin', adminApproval),
       const SizedBox(height: 12),
-      _approvalStatusRow('Parent', parentApproval),
+      if (isLunch)
+        _notifiedRow()
+      else
+        _approvalStatusRow('Parent', parentApproval),
     ]));
+  }
+
+  Widget _notifiedRow() {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      const Text('Parent', style: TextStyle(color: kSubtext, fontSize: 13)),
+      Row(children: [
+        const Icon(Icons.campaign_rounded, color: Colors.blue, size: 18),
+        const SizedBox(width: 8),
+        const Text('Notified', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600, fontSize: 13)),
+      ]),
+    ]);
   }
 
   Widget _approvalStatusRow(String role, String status) {
@@ -633,16 +683,16 @@ class _ApprovalBadge extends StatelessWidget {
     late String icon;
 
     if (status == 'approved') {
-      bgColor = const Color(0xFFF0FDF4); // emerald-50
-      textColor = const Color(0xFF059669); // emerald-700
+      bgColor = const Color(0xFFF0FDF4);
+      textColor = const Color(0xFF059669);
       icon = '✓';
     } else if (status == 'rejected') {
-      bgColor = const Color(0xFFFEF2F2); // red-50
-      textColor = const Color(0xFFDC2626); // red-600
+      bgColor = const Color(0xFFFEF2F2);
+      textColor = const Color(0xFFDC2626);
       icon = '✗';
     } else {
-      bgColor = const Color(0xFFFEF3C7); // amber-50
-      textColor = const Color(0xFFB45309); // amber-700
+      bgColor = const Color(0xFFFEF3C7);
+      textColor = const Color(0xFFB45309);
       icon = '⏳';
     }
 
@@ -656,6 +706,27 @@ class _ApprovalBadge extends StatelessWidget {
       child: Text(
         '$role $icon',
         style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// Badge shown in place of the parent approval badge for Lunch Pass (parent only notified, not required to approve)
+class _LunchParentNotifiedBadge extends StatelessWidget {
+  const _LunchParentNotifiedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF3B82F6).withAlpha(100)),
+      ),
+      child: const Text(
+        'Parent 📢 Notified',
+        style: TextStyle(color: Color(0xFF2563EB), fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -728,6 +799,7 @@ class PassDetailsScreen extends StatelessWidget {
   Widget _buildApprovalStatus(Map<String, dynamic> passData) {
     final adminApproval = passData['adminApproval'] as String? ?? 'pending';
     final parentApproval = passData['parentApproval'] as String? ?? 'pending';
+    final isLunch = (passData['type'] as String? ?? '') == 'lunch';
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -735,9 +807,23 @@ class PassDetailsScreen extends StatelessWidget {
         const SizedBox(height: 12),
         _approvalStatusRow('Admin', adminApproval),
         const SizedBox(height: 12),
-        _approvalStatusRow('Parent', parentApproval),
+        if (isLunch)
+          _notifiedRow()
+        else
+          _approvalStatusRow('Parent', parentApproval),
       ]),
     );
+  }
+
+  Widget _notifiedRow() {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      const Text('Parent', style: TextStyle(color: kSubtext, fontSize: 13)),
+      Row(children: [
+        const Icon(Icons.campaign_rounded, color: Colors.blue, size: 18),
+        const SizedBox(width: 8),
+        const Text('Notified', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600, fontSize: 13)),
+      ]),
+    ]);
   }
 
   Widget _approvalStatusRow(String role, String status) {
